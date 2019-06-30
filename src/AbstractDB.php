@@ -147,7 +147,7 @@ abstract class AbstractDB
                     $this->dsn = "pgsql:dbname={$this->name};host={$this->host};port={$this->port}";
                     break;
                 case DBType::MSSQL:
-                    $this->dsn = "sqlsrv:Server={$this->host},{$this->port};Database={$this->name}";
+                    $this->dsn = "sqlsrv:Server={$this->host},{$this->port};src={$this->name}";
                     break;
                 case DBType::SQLITE:
                     $this->dsn = "sqlite:{$this->db_file_path}" . DIRECTORY_SEPARATOR . $this->name;

@@ -2,10 +2,9 @@
 
 namespace Yonna\Database;
 
+use Exception;
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\Exception\BulkWriteException;
-use Yonna\Exception\Exception;
-use Yonna\Mapping\DBType;
 use MongoDB;
 
 class Mongo extends AbstractDB
@@ -23,6 +22,7 @@ class Mongo extends AbstractDB
      * 架构函数 取得模板对象实例
      * @access public
      * @param array $setting
+     * @throws Exception
      */
     public function __construct(array $setting)
     {
@@ -31,9 +31,9 @@ class Mongo extends AbstractDB
             if (class_exists('\\MongoDB\Driver\Manager')) {
                 try {
                     $this->mongoManager = new MongoDB\Driver\Manager($this->dsn());
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $this->mongoManager = null;
-                    Exception::throw('MongoDB遇到问题或未安装，请暂时停用MongoDB以减少阻塞卡顿');
+                    throw new Exception('MongoDB遇到问题或未安装，请暂时停用MongoDB以减少阻塞卡顿');
                 }
             }
         }
@@ -46,18 +46,23 @@ class Mongo extends AbstractDB
     }
 
 
-    public function insert(){
+    /**
+     * @param array $data
+     * @return int
+     * @throws Exception
+     */
+    public function insert(array $data): int
+    {
         $bulk = new BulkWrite();
-        $bulk->insert(array(
-            'product_id'        => 123,
-            'product_name'      => 'zyzyzy',
-            'product_price'     => 2139.00,
-        ));
+        $bulk->insert($data);
+        $count = 0;
         try {
             $result = $this->mongoManager->executeBulkWrite('ppm.test', $bulk);
-            var_dump($result->getInsertedCount());
+            $count = $result->getInsertedCount();
         } catch (BulkWriteException $e) {
+            throw new Exception($e->getMessage());
         }
+        return $count;
     }
 
 }

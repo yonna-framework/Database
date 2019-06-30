@@ -3,14 +3,13 @@
 
 namespace Yonna\Database;
 
-use Yonna\Core\Glue;
 use Yonna\Database\Coupling;
 use Yonna\Mapping\DBType;
 
 /**
  * Class DB
  */
-class DB extends Glue
+class DB
 {
 
     /**

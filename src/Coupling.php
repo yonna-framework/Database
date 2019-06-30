@@ -1,10 +1,9 @@
 <?php
 
-namespace Yonna\Database;
+namespace Yonna\Database\Src;
 
 use Yonna\Config\Arrow;
 use Yonna\Core;
-use Yonna\Glue\Response;
 use Yonna\Exception\Exception;
 
 class Coupling
@@ -39,11 +38,11 @@ class Coupling
             }
         }
         if (empty($link['type'])) Exception::throw('Lack type of database');
-        if ($mustDbType && $mustDbType !== $link['type']) Exception::throw('Database type check no pass');
+        if ($mustDbType && $mustDbType !== $link['type']) Exception::throw('src type check no pass');
         if (empty($link['host']) || empty($link['port'])) Exception::throw('Lack of host/port address');
         $u = md5(var_export($link, true));
         if (empty(static::$db[$u])) {
-            static::$db[$u] = Core::singleton("\\Core\Core\\Database\\{$link['type']}", $link);
+            static::$db[$u] = Core::singleton("\\Core\Core\\src\\{$link['type']}", $link);
         }
         return static::$db[$u];
     }
