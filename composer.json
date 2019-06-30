@@ -1,6 +1,6 @@
 {
   "name": "yonna/database",
-  "description": "Yonna DB",
+  "description": "database库是yonna强大的DB-ORM",
   "license": "MIT",
   "type": "library",
   "keywords": [
