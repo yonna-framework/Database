@@ -1,0 +1,30 @@
+{
+  "name": "yonna/database",
+  "description": "Yonna DB",
+  "license": "MIT",
+  "type": "library",
+  "keywords": [
+    "php",
+    "yonna",
+    "framework",
+    "database"
+  ],
+  "require": {
+    "ext-redis": "*",
+    "ext-json": "*",
+    "ext-pdo": "*",
+    "ext-mongodb": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Yonna\\DB\\": ""
+    }
+  },
+  "authors": [
+    {
+      "name": "hunzsig",
+      "email": "mzyhaohaoren@qq.com",
+      "homepage": "https://www.hunzsig.org"
+    }
+  ]
+}
