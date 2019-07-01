@@ -4,11 +4,9 @@
  * version >= 3
  */
 
-namespace Yonna\Database;
+namespace Yonna\Database\Src;
 
 use Exception;
-use Yonna\Glue\Response;
-use Yonna\Mapping\DBType;
 
 class Sqlite extends AbstractPDO
 {

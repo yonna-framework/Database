@@ -14,7 +14,8 @@
     "ext-redis": "*",
     "ext-json": "*",
     "ext-pdo": "*",
-    "ext-mongodb": "*"
+    "ext-mongodb": "*",
+    "yonna/foundation": "@dev"
   },
   "autoload": {
     "psr-4": {

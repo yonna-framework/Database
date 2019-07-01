@@ -1,9 +1,8 @@
 <?php
 
-namespace Yonna\Database;
+namespace Yonna\Database\Src;
 
-use Yonna\Config\Crypto as ConfigCrypto;
-use Yonna\Glue\Response;
+use Exception;
 
 class Crypto
 {
@@ -20,25 +19,27 @@ class Crypto
     }
 
     /**
-     * @param $str
+     * @param string $str
      * @return string
+     * @throws Exception
      */
     public static function encrypt(string $str)
     {
         if (!static::$crypto_type || !static::$crypto_secret || !static::$crypto_iv) {
-            Exception::abort('Crypto encrypt error');
+            throw new Exception('Crypto encrypt error');
         }
         return openssl_encrypt($str, static::$crypto_type, static::$crypto_secret, 0, static::$crypto_iv);
     }
 
     /**
-     * @param $str
+     * @param string $str
      * @return string
+     * @throws Exception
      */
     public static function decrypt(string $str)
     {
         if (!static::$crypto_type || !static::$crypto_secret || !static::$crypto_iv) {
-            Exception::abort('Crypto decrypt error');
+            throw new Exception('Crypto decrypt error');
         }
         return openssl_decrypt($str, static::$crypto_type, static::$crypto_secret, 0, static::$crypto_iv);
     }

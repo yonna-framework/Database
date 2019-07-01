@@ -1,6 +1,6 @@
 <?php
 
-namespace Yonna\Database;
+namespace Yonna\Database\Src;
 
 use Yonna\Exception\Exception;
 

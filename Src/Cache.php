@@ -1,12 +1,21 @@
 <?php
 
-namespace Yonna\Database;
+namespace Yonna\Database\Src;
 
 use Yonna\Config\Arrow;
-use Yonna\Glue\DB;
+use Yonna\Database\DB;
 
 class Cache
 {
+
+    const FOREVER = 'forever';
+    const ONE_MINUTE = '60';
+    const FIVE_MINUTE = '300';
+    const TEN_MINUTE = '600';
+    const HALF_ONE_HOUR = '1800';
+    const ONE_HOUR = '3600';
+    const ONE_DAY = '86400';
+    const ONE_WEEK = '604800';
 
     const DEFAULT_MINIMUM_TIMEOUT = 10;
 

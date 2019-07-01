@@ -2,9 +2,9 @@
 /**
  * src Driver Types
  */
-namespace Yonna\Database;
+namespace Yonna\Database\Src;
 
-class DBType
+class Type
 {
 
     const MYSQL = 'Mysql';

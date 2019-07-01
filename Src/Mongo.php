@@ -10,7 +10,7 @@ use MongoDB;
 class Mongo extends AbstractDB
 {
 
-    protected $db_type = DBType::MONGO;
+    protected $db_type = Type::MONGO;
 
     /**
      * @var MongoDB\Driver\Manager | null

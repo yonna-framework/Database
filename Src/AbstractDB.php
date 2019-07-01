@@ -1,9 +1,8 @@
 <?php
 
-namespace Yonna\Database;
+namespace Yonna\Database\Src;
 
-use Yonna\Exception\Exception;
-use Yonna\Mapping\DBType;
+use Exception;
 
 abstract class AbstractDB
 {
@@ -132,27 +131,28 @@ abstract class AbstractDB
     /**
      * 获取 DSN
      * @return string
+     * @throws Exception
      */
     protected function dsn()
     {
         if (empty($this->db_type)) {
-            Exception::throw('Dsn type is Empty');
+            throw new Exception('Dsn type is Empty');
         }
         if (!$this->dsn) {
             switch ($this->db_type) {
-                case DBType::MYSQL:
+                case Type::MYSQL:
                     $this->dsn = "mysql:dbname={$this->name};host={$this->host};port={$this->port}";
                     break;
-                case DBType::PGSQL:
+                case Type::PGSQL:
                     $this->dsn = "pgsql:dbname={$this->name};host={$this->host};port={$this->port}";
                     break;
-                case DBType::MSSQL:
+                case Type::MSSQL:
                     $this->dsn = "sqlsrv:Server={$this->host},{$this->port};src={$this->name}";
                     break;
-                case DBType::SQLITE:
+                case Type::SQLITE:
                     $this->dsn = "sqlite:{$this->db_file_path}" . DIRECTORY_SEPARATOR . $this->name;
                     break;
-                case DBType::MONGO:
+                case Type::MONGO:
                     if ($this->account && $this->password) {
                         $this->dsn = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}/{$this->name}";
                     } else {
@@ -160,7 +160,7 @@ abstract class AbstractDB
                     }
                     break;
                 default:
-                    Exception::throw("{$this->db_type} type is not supported for the time being");
+                    throw new Exception("{$this->db_type} type is not supported for the time being");
                     break;
             }
         }

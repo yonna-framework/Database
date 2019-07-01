@@ -3,8 +3,8 @@
 
 namespace Yonna\Database;
 
-use Yonna\Database\Coupling;
-use Yonna\Mapping\DBType;
+use Yonna\Database\Src\Coupling;
+use Yonna\Database\Src\Type;
 
 /**
  * Class DB
@@ -14,7 +14,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return object|\Yonna\Database\Mongo|\Yonna\Database\Mssql|\Yonna\Database\Mysql|\Yonna\Database\Pgsql|\Yonna\Database\Redis|\Yonna\Database\Sqlite
+     * @return object|\Yonna\Database\Src\Mongo|\Yonna\Database\Mssql|\Yonna\Database\Mysql|\Yonna\Database\Pgsql|\Yonna\Database\Redis|\Yonna\Database\Sqlite
      */
     public static function connect($conf = 'default')
     {
@@ -23,56 +23,56 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Mysql
+     * @return \Yonna\Database\Src\Mysql
      */
     public static function mysql($conf = 'mysql')
     {
-        return Coupling::connect($conf, DBType::MYSQL);
+        return Coupling::connect($conf, Type::MYSQL);
     }
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Pgsql
+     * @return \Yonna\Database\Src\Pgsql
      */
     public static function pgsql($conf = 'pgsql')
     {
-        return Coupling::connect($conf, DBType::PGSQL);
+        return Coupling::connect($conf, Type::PGSQL);
     }
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Mssql
+     * @return \Yonna\Database\Src\Mssql
      */
     public static function mssql($conf = 'mssql')
     {
-        return Coupling::connect($conf, DBType::MSSQL);
+        return Coupling::connect($conf, Type::MSSQL);
     }
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Sqlite
+     * @return \Yonna\Database\Src\Sqlite
      */
     public static function sqlite($conf = 'sqlite')
     {
-        return Coupling::connect($conf, DBType::SQLITE);
+        return Coupling::connect($conf, Type::SQLITE);
     }
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Mongo
+     * @return \Yonna\Database\Src\Mongo
      */
     public static function mongo($conf = 'mongo')
     {
-        return Coupling::connect($conf, DBType::MONGO);
+        return Coupling::connect($conf, Type::MONGO);
     }
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Redis
+     * @return \Yonna\Database\Src\Redis
      */
     public static function redis($conf = 'redis')
     {
-        return Coupling::connect($conf, DBType::REDIS);
+        return Coupling::connect($conf, Type::REDIS);
     }
 
 }

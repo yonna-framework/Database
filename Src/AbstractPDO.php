@@ -1,14 +1,12 @@
 <?php
 
-namespace Yonna\Database;
+namespace Yonna\Database\Src;
 
 use Moment;
 use PDO;
 use PDOException;
 use PDOStatement;
 use Yonna\Exception\Exception;
-use Yonna\Mapping\AutoCache;
-use Yonna\Mapping\DBType;
 use Str;
 
 abstract class AbstractPDO extends AbstractDB
