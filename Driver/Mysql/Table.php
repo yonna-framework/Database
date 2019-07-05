@@ -705,13 +705,12 @@ class Table extends AbstractPDO
         $count = (int)$count;
         $result = array();
         $per = !$per ? 10 : $per;
-        $end = ceil($count / $per);
-        $result['data'] = $data;
-        $result['page'] = [];
+        $last = ceil($count / $per);
+        $result['list'] = $data;
         $result['page']['total'] = $count;
-        $result['page']['current'] = (int)$current;
         $result['page']['per'] = $per;
-        $result['page']['end'] = (int)$end;
+        $result['page']['current'] = (int)$current;
+        $result['page']['last'] = (int)$last;
         return $result;
     }
 
