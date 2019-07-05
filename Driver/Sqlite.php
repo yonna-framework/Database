@@ -1,15 +1,14 @@
 <?php
 /**
- * 数据库连接类，依赖 PDO_SQLSRV 扩展
- * version >= 2012
+ * 数据库连接类，依赖 PDO_SQLITE 扩展
+ * version >= 3
  */
 
-namespace Yonna\Database;
+namespace Yonna\Database\Driver;
 
 use Exception;
-use Yonna\Mapping\DBType;
 
-class Mssql extends AbstractPDO
+class Sqlite extends AbstractPDO
 {
 
     /**
@@ -20,9 +19,9 @@ class Mssql extends AbstractPDO
     public function __construct(array $setting)
     {
         parent::__construct($setting);
-        $this->charset = $setting['charset'] ?: 'gbk';
-        $this->db_type = DBType::MSSQL;
-        $this->selectSql = 'SELECT%LIMIT%%DISTINCT% %FIELD% FROM %SCHEMAS%.%TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%OFFSET%%UNION%%LOCK%%COMMENT%';
+        $this->charset = $setting['charset'] ?: 'utf8';
+        $this->db_type = Type::SQLITE;
+        $this->selectSql = 'SELECT%DISTINCT% %FIELD% FROM %TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%LIMIT% %UNION%%LOCK%%COMMENT%';
     }
 
     /**
@@ -36,19 +35,6 @@ class Mssql extends AbstractPDO
 
 
     /**
-     * 哪个模式
-     *
-     * @param string $schemas
-     * @return self
-     */
-    public function schemas($schemas)
-    {
-        $this->resetAll();
-        $this->options['schemas'] = $schemas;
-        return $this;
-    }
-
-    /**
      * 哪个表
      *
      * @param string $table
@@ -56,6 +42,7 @@ class Mssql extends AbstractPDO
      */
     public function table($table)
     {
+        $this->resetAll();
         $table = str_replace([' as ', ' AS ', ' As ', ' aS ', ' => '], ' ', trim($table));
         $tableEX = explode(' ', $table);
         if (count($tableEX) === 2) {
@@ -149,11 +136,14 @@ class Mssql extends AbstractPDO
      * @param $target
      * @param $join
      * @param array $req
-     * @param string $type INNER | OUTER | LEFT | RIGHT
+     * @param string $type INNER | LEFT
      * @return self
      */
-    public function join($target, $join, $req = array(), $type = 'INNER')
+    public function join($target, $join, $req = [], $type = 'INNER')
     {
+        if (!in_array($type, ['INNER', 'LEFT'])) {
+            Exception::abort("Join not support {$type} yet");
+        }
         if ($target && $join) {
             $join = str_replace([' as ', ' AS ', ' As ', ' aS ', ' => '], ' ', trim($join));
             $originJoin = $join = explode(' ', $join);
@@ -192,6 +182,7 @@ class Mssql extends AbstractPDO
         }
         return $this;
     }
+
 
     /**
      * @param $field
@@ -340,6 +331,20 @@ class Mssql extends AbstractPDO
     }
 
     /**
+     * @param array $where
+     * @return self
+     */
+    public function where(array $where)
+    {
+        if ($where) {
+            foreach ($where as $k => $v) {
+                $this->equalTo($k, $v);
+            }
+        }
+        return $this;
+    }
+
+    /**
      * json闭包器
      * @param $string
      * @param null $closure
@@ -453,27 +458,21 @@ class Mssql extends AbstractPDO
                         $this->notEqualTo($matchField, $matchValue);
                         break;
                     case '%':
-                        $matchField = "({$matchField})::text";
                         $this->like($matchField, $matchValue);
                         break;
                     case '!%':
-                        $matchField = "({$matchField})::text";
                         $this->notLike($matchField, $matchValue);
                         break;
                     case '>':
-                        $matchField = "({$matchField})::numeric";
                         $this->greaterThan($matchField, $matchValue);
                         break;
                     case '>=':
-                        $matchField = "({$matchField})::numeric";
                         $this->greaterThanOrEqualTo($matchField, $matchValue);
                         break;
                     case '<':
-                        $matchField = "({$matchField})::numeric";
                         $this->lessThan($matchField, $matchValue);
                         break;
                     case '<=':
-                        $matchField = "({$matchField})::numeric";
                         $this->lessThanOrEqualTo($matchField, $matchValue);
                         break;
                     case '><':
@@ -489,7 +488,6 @@ class Mssql extends AbstractPDO
                         $this->notIn($matchField, explode(',', $matchValue));
                         break;
                     default:
-                        continue;
                         break;
                 }
             }
@@ -639,16 +637,60 @@ class Mssql extends AbstractPDO
         if (is_null($length) && strpos($offset, ',')) {
             list($offset, $length) = explode(',', $offset);
         }
-        if ($length === null) {
-            $this->options['limit'] = $offset;
-            $this->options['offset'] = null;
-        } else {
-            $this->options['limit'] = $length;
-            $this->options['offset'] = $offset;
-        }
+        $this->options['limit'] = ($length ? intval($length) . ' OFFSET ' : '') . intval($offset);
         return $this;
     }
 
+    /**
+     * 统计设定
+     * @param $statTimeRange
+     * @param $timeField
+     * @param string $groupBy
+     * @return self
+     */
+    public function statRange($statTimeRange, $timeField, $groupBy = null)
+    {
+        if (!$timeField) {
+            return $this;
+        }
+        if ($groupBy) {
+            $groupBy = (array)$groupBy;
+            foreach ($groupBy as $k => $v) {
+                $this->field($v);
+                $this->groupBy($v);
+            }
+        }
+        $this->field("COUNT(0) AS 'qty'");
+        switch ($statTimeRange) {
+            case 'Y':
+                $this->field("SUBSTR({$timeField}, 1, 4) AS 't'");
+                $this->groupBy("SUBSTR({$timeField}, 1, 4)");
+                break;
+            case 'm':
+                $this->field("SUBSTR({$timeField}, 1, 7) AS 't'");
+                $this->groupBy("SUBSTR({$timeField}, 1, 7)");
+                break;
+            case 'd':
+                $this->field("SUBSTR({$timeField}, 1, 10) AS 't'");
+                $this->groupBy("SUBSTR({$timeField}, 1, 10)");
+                break;
+            case 'H':
+                $this->field("SUBSTR({$timeField}, 1, 13) AS 't'");
+                $this->groupBy("SUBSTR({$timeField}, 1, 13)");
+                break;
+            case 'i':
+                $this->field("SUBSTR({$timeField}, 1, 16) AS 't'");
+                $this->groupBy("SUBSTR({$timeField}, 1, 16)");
+                break;
+            case 's':
+                $this->field("SUBSTR({$timeField}, 1, 19) AS 't'");
+                $this->groupBy("SUBSTR({$timeField}, 1, 19)");
+                break;
+            default:
+                break;
+        }
+        return $this;
+    }
 
     /**  @tips 终结操作 */
 
@@ -658,7 +700,7 @@ class Mssql extends AbstractPDO
      */
     public function now()
     {
-        return array('exp', 'GETDATE()');
+        return array('exp', "select datetime(CURRENT_TIMESTAMP,'localtime')");
     }
 
     /**
@@ -700,7 +742,6 @@ class Mssql extends AbstractPDO
         $sql = $this->buildSelectSql($options);
         $options['order'] = null;
         $options['limit'] = 1;
-        $options['offset'] = 0;
         if (!empty($options['group'])) {
             $options['field'] = 'count(DISTINCT ' . $options['group'] . ') as "hcount"';
             $options['group'] = null;
@@ -724,7 +765,7 @@ class Mssql extends AbstractPDO
         $result['page']['end'] = (int)$end;
         return $result;
     }
-
+    
     /**
      * 统计
      * @param int $field
@@ -807,7 +848,11 @@ class Mssql extends AbstractPDO
                     $values[] = 'NULL';
                 } elseif (is_array($val) || is_scalar($val)) { // 过滤非标量数据
                     // 跟据表字段处理数据
-                    $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
+                    if (is_array($val) && strpos($ft[$table . '_' . $key], 'char') !== false) { // 字符串型数组
+                        $val = $this->arr2comma($val, $ft[$table . '_' . $key]);
+                    } else {
+                        $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
+                    }
                     if ($val !== null) {
                         $fields[] = $this->parseKey($key);
                         $values[] = $this->parseValue($val);
@@ -845,7 +890,12 @@ class Mssql extends AbstractPDO
                         $value[] = 'NULL';
                     } elseif (is_array($val) || is_scalar($val)) { // 过滤非标量数据
                         // 跟据表字段处理数据
-                        $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
+                        if (is_array($val) && strpos($ft[$table . '_' . $key], 'char') !== false) { // 字符串型数组
+                            $val = $this->arr2comma($val, $ft[$table . '_' . $key]);
+                            if ($val === null) $value[] = 'NULL';
+                        } else {
+                            $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
+                        }
                         if ($val !== null) {
                             $value[] = $this->parseValue($val);
                         }
@@ -881,7 +931,11 @@ class Mssql extends AbstractPDO
                     $set[] = $this->parseKey($key) . '= NULL';
                 } elseif (is_array($val) || is_scalar($val)) { // 过滤非标量数据
                     // 跟据表字段处理数据
-                    $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
+                    if (is_array($val) && strpos($ft[$table . '_' . $key], 'char') !== false) { // 字符串型数组
+                        $val = $this->arr2comma($val, $ft[$table . '_' . $key]);
+                    } else {
+                        $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
+                    }
                     if ($val !== null) {
                         $set[] = $this->parseKey($key) . '=' . $this->parseValue($val);
                     }

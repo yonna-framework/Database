@@ -2,7 +2,7 @@
 /**
  * src Driver Types
  */
-namespace Yonna\Database\Src;
+namespace Yonna\Database\Driver;
 
 class Type
 {

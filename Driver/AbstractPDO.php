@@ -1,13 +1,13 @@
 <?php
 
-namespace Yonna\Database\Src;
+namespace Yonna\Database\Driver;
 
-use Moment;
 use PDO;
 use PDOException;
 use PDOStatement;
 use Yonna\Exception\Exception;
-use Str;
+use Yonna\Foundation\Str;
+use Yonna\Foundation\Moment;
 
 abstract class AbstractPDO extends AbstractDB
 {
@@ -160,7 +160,7 @@ abstract class AbstractPDO extends AbstractDB
      * @param $msg
      * @return mixed
      */
-    protected function askDBType($type, $msg)
+    protected function askType($type, $msg)
     {
         if ($this->db_type !== $type) {
             Exception::abort("{$msg} not support {$this->db_type} yet");
@@ -177,7 +177,7 @@ abstract class AbstractPDO extends AbstractDB
         if (!$this->pdo) {
             try {
                 switch ($this->db_type) {
-                    case DBType::MYSQL:
+                    case Type::MYSQL:
                         $this->pdo = new PDO($this->dsn(), $this->account, $this->password,
                             array(
                                 PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $this->charset,
@@ -187,7 +187,7 @@ abstract class AbstractPDO extends AbstractDB
                             )
                         );
                         break;
-                    case DBType::PGSQL:
+                    case Type::PGSQL:
                         $this->pdo = new PDO($this->dsn(), $this->account, $this->password,
                             array(
                                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -196,14 +196,14 @@ abstract class AbstractPDO extends AbstractDB
                             )
                         );
                         break;
-                    case DBType::MSSQL:
+                    case Type::MSSQL:
                         $this->pdo = new PDO($this->dsn(), $this->account, $this->password,
                             array(
                                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                             )
                         );
                         break;
-                    case DBType::SQLITE:
+                    case Type::SQLITE:
                         $this->pdo = new PDO($this->dsn(), null, null,
                             array(
                                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -388,7 +388,7 @@ abstract class AbstractPDO extends AbstractDB
             }
             $result = null;
             switch ($this->db_type) {
-                case DBType::MYSQL:
+                case Type::MYSQL:
                     $sql = "SELECT COLUMN_NAME AS `field`,DATA_TYPE AS fieldtype FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema ='{$this->name}' AND table_name = '{$table}';";
                     $result = Cache::get($sql);
                     if (!$result) {
@@ -399,7 +399,7 @@ abstract class AbstractPDO extends AbstractDB
                         }
                     }
                     break;
-                case DBType::PGSQL:
+                case Type::PGSQL:
                     $sql = "SELECT a.attname as field,format_type(a.atttypid,a.atttypmod) as fieldtype FROM pg_class as c,pg_attribute as a where a.attisdropped = false and c.relname = '{$table}' and a.attrelid = c.oid and a.attnum>0;";
                     $result = Cache::get($sql);
                     if (!$result) {
@@ -410,7 +410,7 @@ abstract class AbstractPDO extends AbstractDB
                         }
                     }
                     break;
-                case DBType::MSSQL:
+                case Type::MSSQL:
                     $sql = "sp_columns \"{$table}\";";
                     $result = Cache::get($sql);
                     if (!$result) {
@@ -428,7 +428,7 @@ abstract class AbstractPDO extends AbstractDB
                         }
                     }
                     break;
-                case DBType::SQLITE:
+                case Type::SQLITE:
                     $sql = "select sql from sqlite_master where tbl_name = '{$table}' and type='table';";
                     $result = Cache::get($sql);
                     if (!$result) {
@@ -497,14 +497,14 @@ abstract class AbstractPDO extends AbstractDB
         $key = trim($key);
         if (!is_numeric($key) && !preg_match('/[,\'\"\*\(\)`.\s]/', $key)) {
             switch ($this->db_type) {
-                case DBType::MYSQL:
+                case Type::MYSQL:
                     $key = '`' . $key . '`';
                     break;
-                case DBType::PGSQL:
-                case DBType::MSSQL:
+                case Type::PGSQL:
+                case Type::MSSQL:
                     $key = '"' . $key . '"';
                     break;
-                case DBType::SQLITE:
+                case Type::SQLITE:
                     $key = "'" . $key . "'";
                     break;
                 default:
@@ -594,7 +594,7 @@ abstract class AbstractPDO extends AbstractDB
                     $json = array('crypto' => $this->Crypto::encrypt($val));
                     $val = json_encode($json);
                 }
-                if ($this->db_type === DBType::MYSQL) {
+                if ($this->db_type === Type::MYSQL) {
                     $val = addslashes($val);
                 }
                 break;
@@ -627,7 +627,7 @@ abstract class AbstractPDO extends AbstractDB
                 }
                 break;
             default:
-                if ($this->db_type === DBType::PGSQL) {
+                if ($this->db_type === Type::PGSQL) {
                     if (strpos($ft, 'numeric') !== false) {
                         $val = round($val, 10);
                     }
@@ -685,7 +685,7 @@ abstract class AbstractPDO extends AbstractDB
                 }
                 break;
             default:
-                if ($this->db_type === DBType::PGSQL) {
+                if ($this->db_type === Type::PGSQL) {
                     if (strpos($ft, 'numeric') !== false) {
                         $val = round($val, 10);
                     }
@@ -838,7 +838,7 @@ abstract class AbstractPDO extends AbstractDB
                             }
                             break;
                         default:
-                            if ($this->db_type === DBType::PGSQL) {
+                            if ($this->db_type === Type::PGSQL) {
                                 if (substr($ft[$k], -2) === '[]') {
                                     $result[$k] = json_decode($v, true);
                                     if ($this->isUseCrypto()) {
@@ -946,7 +946,7 @@ abstract class AbstractPDO extends AbstractDB
     {
         $l = '';
         switch ($this->db_type) {
-            case DBType::MSSQL:
+            case Type::MSSQL:
                 if (!empty($this->options['offset'])) {
                     return $l;
                 }
@@ -1118,7 +1118,7 @@ abstract class AbstractPDO extends AbstractDB
             $listRows = $listRows > 0 ? $listRows : (is_numeric($options['limit']) ? $options['limit'] : 20);
             $offset = $listRows * ($page - 1);
             switch ($this->db_type) {
-                case DBType::MSSQL:
+                case Type::MSSQL:
                     $options['limit'] = $listRows;
                     $options['offset'] = $offset;
                     break;
@@ -1321,7 +1321,7 @@ abstract class AbstractPDO extends AbstractDB
                             $innerSql .= " not in ({$value})";
                             break;
                         case self::findInSetOr:
-                            if ($this->db_type !== DBType::MYSQL) {
+                            if ($this->db_type !== Type::MYSQL) {
                                 Exception::throw("{$v['operat']} not support {$this->db_type}");
                             }
                             if ($v['value']) {
@@ -1343,7 +1343,7 @@ abstract class AbstractPDO extends AbstractDB
                             }
                             break;
                         case self::notFindInSetOr:
-                            $this->askDBType(DBType::MYSQL, $v['operat']);
+                            $this->askType(Type::MYSQL, $v['operat']);
                             if ($v['value']) {
                                 $v['value'] = (array)$v['value'];
                                 foreach ($v['value'] as $vfisk => $vfis) {
@@ -1363,7 +1363,7 @@ abstract class AbstractPDO extends AbstractDB
                             }
                             break;
                         case self::findInSetAnd:
-                            $this->askDBType(DBType::MYSQL, $v['operat']);
+                            $this->askType(Type::MYSQL, $v['operat']);
                             if ($v['value']) {
                                 $v['value'] = (array)$v['value'];
                                 foreach ($v['value'] as $vfisk => $vfis) {
@@ -1383,7 +1383,7 @@ abstract class AbstractPDO extends AbstractDB
                             }
                             break;
                         case self::notFindInSetAnd:
-                            $this->askDBType(DBType::MYSQL, $v['operat']);
+                            $this->askType(Type::MYSQL, $v['operat']);
                             if ($v['value']) {
                                 $v['value'] = (array)$v['value'];
                                 foreach ($v['value'] as $vfisk => $vfis) {
@@ -1403,7 +1403,7 @@ abstract class AbstractPDO extends AbstractDB
                             }
                             break;
                         case self::any:
-                            $this->askDBType(DBType::PGSQL, $v['operat']);
+                            $this->askType(Type::PGSQL, $v['operat']);
                             $value = $this->parseWhereByFieldType($v['value'], $ft_type);
                             $value = $this->parseValue($value);
                             $value = (array)$value;
@@ -1414,14 +1414,14 @@ abstract class AbstractPDO extends AbstractDB
                             $innerSql .= " = any (values {$value})";
                             break;
                         case self::contains:
-                            $this->askDBType(DBType::PGSQL, $v['operat']);
+                            $this->askType(Type::PGSQL, $v['operat']);
                             $value = $this->parseWhereByFieldType($v['value'], $ft_type);
                             $value = $this->toPGArray((array)$value, str_replace('[]', '', $ft_type));
                             $value = $this->parseValue($value);
                             $innerSql .= " @> {$value}";
                             break;
                         case self::isContainsBy:
-                            $this->askDBType(DBType::PGSQL, $v['operat']);
+                            $this->askType(Type::PGSQL, $v['operat']);
                             $value = $this->parseWhereByFieldType($v['value'], $ft_type);
                             $value = $this->toPGArray((array)$value, str_replace('[]', '', $ft_type));
                             $value = $this->parseValue($value);
@@ -1471,8 +1471,8 @@ abstract class AbstractPDO extends AbstractDB
     protected function parseSql($sql, $options = array())
     {
         switch ($this->db_type) {
-            case DBType::MYSQL:
-            case DBType::SQLITE:
+            case Type::MYSQL:
+            case Type::SQLITE:
                 $sql = str_replace(
                     array('%TABLE%', '%ALIA%', '%DISTINCT%', '%FIELD%', '%JOIN%', '%WHERE%', '%GROUP%', '%HAVING%', '%ORDER%', '%LIMIT%', '%UNION%', '%LOCK%', '%COMMENT%', '%FORCE%'),
                     array(
@@ -1492,7 +1492,7 @@ abstract class AbstractPDO extends AbstractDB
                         $this->parseForce(!empty($options['force']) ? $options['force'] : '')
                     ), $sql);
                 break;
-            case DBType::PGSQL:
+            case Type::PGSQL:
                 $sql = str_replace(
                     array('%SCHEMAS%', '%TABLE%', '%ALIA%', '%DISTINCT%', '%FIELD%', '%JOIN%', '%WHERE%', '%GROUP%', '%HAVING%', '%ORDER%', '%LIMIT%', '%UNION%', '%LOCK%', '%COMMENT%', '%FORCE%'),
                     array(
@@ -1513,7 +1513,7 @@ abstract class AbstractPDO extends AbstractDB
                         $this->parseForce(!empty($options['force']) ? $options['force'] : '')
                     ), $sql);
                 break;
-            case DBType::MSSQL:
+            case Type::MSSQL:
                 $sql = str_replace(
                     array('%SCHEMAS%', '%TABLE%', '%ALIA%', '%DISTINCT%', '%FIELD%', '%JOIN%', '%WHERE%', '%GROUP%', '%HAVING%', '%ORDER%', '%LIMIT%', '%OFFSET%', '%UNION%', '%LOCK%', '%COMMENT%', '%FORCE%'),
                     array(
@@ -1614,7 +1614,7 @@ abstract class AbstractPDO extends AbstractDB
         //read model,check cache
         if ($statement === 'select' || $statement === 'show') {
             $result = false;
-            if ($this->auto_cache === AutoCache::FOREVER) {
+            if ($this->auto_cache === Cache::FOREVER) {
                 $result = Cache::uGet($table, $query);
             } elseif (is_numeric($this->auto_cache)) {
                 $result = Cache::get($table . $query);
@@ -1629,7 +1629,7 @@ abstract class AbstractPDO extends AbstractDB
         if ($statement === 'select' || $statement === 'show') {
             $result = $this->PDOStatement->fetchAll($fetchMode);
             $result = $this->fetchFormat($result);
-            if ($this->auto_cache === AutoCache::FOREVER) {
+            if ($this->auto_cache === Cache::FOREVER) {
                 Cache::uSet($table, $query, $result);
             } elseif (is_numeric($this->auto_cache)) {
                 Cache::set($table . $query, $result, (int)$this->auto_cache);
@@ -1641,7 +1641,7 @@ abstract class AbstractPDO extends AbstractDB
             }
             return $this->PDOStatement->rowCount();
         } elseif ($statement === 'insert') {
-            if ($this->auto_cache === AutoCache::FOREVER) {
+            if ($this->auto_cache === Cache::FOREVER) {
                 Cache::clear($table);
             }
             return $this->PDOStatement->rowCount();
@@ -1731,7 +1731,7 @@ abstract class AbstractPDO extends AbstractDB
                     // check function
                     $tempParseTableForm = $parseTable . '.' . $from;
                     if ($function) {
-                        if ($this->db_type === DBType::PGSQL) {
+                        if ($this->db_type === Type::PGSQL) {
                             $func3 = strtoupper(substr($function, 0, 3));
                             switch ($func3) {
                                 case 'SUM':

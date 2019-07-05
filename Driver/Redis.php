@@ -1,16 +1,15 @@
 <?php
 
-namespace Yonna\Database;
+namespace Yonna\Database\Driver;
 
 use Yonna\Exception\Exception;
-use Yonna\Mapping\DBType;
 use Redis as RedisDriver;
 use Swoole\Coroutine\Redis as RedisSwoole;
 
 class Redis extends AbstractDB
 {
 
-    protected $db_type = DBType::REDIS;
+    protected $db_type = Type::REDIS;
 
 
     const TYPE_OBJ = 'o';

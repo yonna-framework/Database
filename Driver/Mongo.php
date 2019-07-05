@@ -1,6 +1,6 @@
 <?php
 
-namespace Yonna\Database;
+namespace Yonna\Database\Driver;
 
 use Exception;
 use MongoDB\Driver\BulkWrite;

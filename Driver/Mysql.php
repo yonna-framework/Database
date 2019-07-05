@@ -4,12 +4,9 @@
  * mysql version >= 5.7
  */
 
-namespace Yonna\Database;
+namespace Yonna\Database\Driver;
 
-use Exception;
-use Yonna\Core;
-use Yonna\Database\Mysql\Table;
-use Yonna\Mapping\DBType;
+use Yonna\Database\Driver\Mysql\Table;
 
 class Mysql
 {
@@ -59,7 +56,7 @@ class Mysql
             $this->options['table'] = $table;
             $this->options['table_origin'] = null;
         }
-        return Core::get(Table::class, $this->setting, $this->options);
+        return (new Table($this->setting, $this->options));
     }
 
 }

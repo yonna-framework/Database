@@ -1,30 +1,27 @@
 <?php
 /**
- * 数据库连接构建类，依赖 PDO_MYSQL 扩展
- * mysql version >= 5.7
+ * 数据库连接类，依赖 PDO_SQLSRV 扩展
+ * version >= 2012
  */
 
-namespace Yonna\Database\Mysql;
+namespace Yonna\Database\Driver;
 
 use Exception;
-use Yonna\Database\AbstractPDO;
-use Yonna\Mapping\DBType;
 
-class Table extends AbstractPDO
+class Mssql extends AbstractPDO
 {
 
     /**
-     * Table constructor.
+     * 构造方法
+     *
      * @param array $setting
-     * @param array $options
      */
-    public function __construct(array $setting, array $options)
+    public function __construct(array $setting)
     {
         parent::__construct($setting);
-        $this->db_type = DBType::MYSQL;
-        $this->charset = $setting['charset'] ?: 'utf8mb4';
-        $this->selectSql = 'SELECT%DISTINCT% %FIELD% FROM %TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%LIMIT% %UNION%%LOCK%%COMMENT%';
-        $this->options = $options;
+        $this->charset = $setting['charset'] ?: 'gbk';
+        $this->db_type = Type::MSSQL;
+        $this->selectSql = 'SELECT%LIMIT%%DISTINCT% %FIELD% FROM %SCHEMAS%.%TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%OFFSET%%UNION%%LOCK%%COMMENT%';
     }
 
     /**
@@ -34,6 +31,44 @@ class Table extends AbstractPDO
     public function __destruct()
     {
         parent::__destruct();
+    }
+
+
+    /**
+     * 哪个模式
+     *
+     * @param string $schemas
+     * @return self
+     */
+    public function schemas($schemas)
+    {
+        $this->resetAll();
+        $this->options['schemas'] = $schemas;
+        return $this;
+    }
+
+    /**
+     * 哪个表
+     *
+     * @param string $table
+     * @return self
+     */
+    public function table($table)
+    {
+        $table = str_replace([' as ', ' AS ', ' As ', ' aS ', ' => '], ' ', trim($table));
+        $tableEX = explode(' ', $table);
+        if (count($tableEX) === 2) {
+            $this->options['table'] = $tableEX[1];
+            $this->options['table_origin'] = $tableEX[0];
+            if (!isset($this->options['alia'])) {
+                $this->options['alia'] = array();
+            }
+            $this->options['alia'][$tableEX[1]] = $tableEX[0];
+        } else {
+            $this->options['table'] = $table;
+            $this->options['table_origin'] = null;
+        }
+        return $this;
     }
 
     /**
@@ -156,7 +191,6 @@ class Table extends AbstractPDO
         }
         return $this;
     }
-
 
     /**
      * @param $field
@@ -305,46 +339,6 @@ class Table extends AbstractPDO
     }
 
     /**
-     * @param $field
-     * @param $value
-     * @return self
-     */
-    public function findInSetOr($field, $value)
-    {
-        return $this->whereOperat(self::findInSetOr, $field, $value);
-    }
-
-    /**
-     * @param $field
-     * @param $value
-     * @return self
-     */
-    public function notFindInSetOr($field, $value)
-    {
-        return $this->whereOperat(self::notFindInSetOr, $field, $value);
-    }
-
-    /**
-     * @param $field
-     * @param $value
-     * @return self
-     */
-    public function findInSetAnd($field, $value)
-    {
-        return $this->whereOperat(self::findInSetAnd, $field, $value);
-    }
-
-    /**
-     * @param $field
-     * @param $value
-     * @return self
-     */
-    public function notFindInSetAnd($field, $value)
-    {
-        return $this->whereOperat(self::notFindInSetAnd, $field, $value);
-    }
-
-    /**
      * json闭包器
      * @param $string
      * @param null $closure
@@ -458,21 +452,27 @@ class Table extends AbstractPDO
                         $this->notEqualTo($matchField, $matchValue);
                         break;
                     case '%':
+                        $matchField = "({$matchField})::text";
                         $this->like($matchField, $matchValue);
                         break;
                     case '!%':
+                        $matchField = "({$matchField})::text";
                         $this->notLike($matchField, $matchValue);
                         break;
                     case '>':
+                        $matchField = "({$matchField})::numeric";
                         $this->greaterThan($matchField, $matchValue);
                         break;
                     case '>=':
+                        $matchField = "({$matchField})::numeric";
                         $this->greaterThanOrEqualTo($matchField, $matchValue);
                         break;
                     case '<':
+                        $matchField = "({$matchField})::numeric";
                         $this->lessThan($matchField, $matchValue);
                         break;
                     case '<=':
+                        $matchField = "({$matchField})::numeric";
                         $this->lessThanOrEqualTo($matchField, $matchValue);
                         break;
                     case '><':
@@ -488,6 +488,7 @@ class Table extends AbstractPDO
                         $this->notIn($matchField, explode(',', $matchValue));
                         break;
                     default:
+                        continue;
                         break;
                 }
             }
@@ -637,7 +638,13 @@ class Table extends AbstractPDO
         if (is_null($length) && strpos($offset, ',')) {
             list($offset, $length) = explode(',', $offset);
         }
-        $this->options['limit'] = ($length ? intval($length) . ' OFFSET ' : '') . intval($offset);
+        if ($length === null) {
+            $this->options['limit'] = $offset;
+            $this->options['offset'] = null;
+        } else {
+            $this->options['limit'] = $length;
+            $this->options['offset'] = $offset;
+        }
         return $this;
     }
 
@@ -650,7 +657,7 @@ class Table extends AbstractPDO
      */
     public function now()
     {
-        return array('exp', 'now()');
+        return array('exp', 'GETDATE()');
     }
 
     /**
@@ -692,6 +699,7 @@ class Table extends AbstractPDO
         $sql = $this->buildSelectSql($options);
         $options['order'] = null;
         $options['limit'] = 1;
+        $options['offset'] = 0;
         if (!empty($options['group'])) {
             $options['field'] = 'count(DISTINCT ' . $options['group'] . ') as "hcount"';
             $options['group'] = null;
@@ -703,6 +711,7 @@ class Table extends AbstractPDO
         $count = $this->query($sqlCount);
         $count = reset($count)['hcount'];
         $count = (int)$count;
+        //
         $result = array();
         $per = !$per ? 10 : $per;
         $end = ceil($count / $per);
@@ -797,11 +806,7 @@ class Table extends AbstractPDO
                     $values[] = 'NULL';
                 } elseif (is_array($val) || is_scalar($val)) { // 过滤非标量数据
                     // 跟据表字段处理数据
-                    if (is_array($val) && strpos($ft[$table . '_' . $key], 'char') !== false) { // 字符串型数组
-                        $val = $this->arr2comma($val, $ft[$table . '_' . $key]);
-                    } else {
-                        $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
-                    }
+                    $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
                     if ($val !== null) {
                         $fields[] = $this->parseKey($key);
                         $values[] = $this->parseValue($val);
@@ -839,12 +844,7 @@ class Table extends AbstractPDO
                         $value[] = 'NULL';
                     } elseif (is_array($val) || is_scalar($val)) { // 过滤非标量数据
                         // 跟据表字段处理数据
-                        if (is_array($val) && strpos($ft[$table . '_' . $key], 'char') !== false) { // 字符串型数组
-                            $val = $this->arr2comma($val, $ft[$table . '_' . $key]);
-                            if ($val === null) $value[] = 'NULL';
-                        } else {
-                            $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
-                        }
+                        $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
                         if ($val !== null) {
                             $value[] = $this->parseValue($val);
                         }
@@ -880,11 +880,7 @@ class Table extends AbstractPDO
                     $set[] = $this->parseKey($key) . '= NULL';
                 } elseif (is_array($val) || is_scalar($val)) { // 过滤非标量数据
                     // 跟据表字段处理数据
-                    if (is_array($val) && strpos($ft[$table . '_' . $key], 'char') !== false) { // 字符串型数组
-                        $val = $this->arr2comma($val, $ft[$table . '_' . $key]);
-                    } else {
-                        $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
-                    }
+                    $val = $this->parseValueByFieldType($val, $ft[$table . '_' . $key]);
                     if ($val !== null) {
                         $set[] = $this->parseKey($key) . '=' . $this->parseValue($val);
                     }
@@ -901,7 +897,7 @@ class Table extends AbstractPDO
         }
         $sql .= $where;
         if (!strpos($table, ',')) {
-            // 单表更新支持order和limit
+            //  单表更新支持order和limit
             $sql .= $this->parseOrderBy(!empty($this->options['order']) ? $this->options['order'] : '')
                 . $this->parseLimit(!empty($this->options['limit']) ? $this->options['limit'] : '');
         }

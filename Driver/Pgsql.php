@@ -4,7 +4,7 @@
  * version > 9.7
  */
 
-namespace Yonna\Database;
+namespace Yonna\Database\Driver;
 
 use Exception;
 use Yonna\Database\Pgsql\Schemas;

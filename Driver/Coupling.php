@@ -1,9 +1,9 @@
 <?php
 
-namespace Yonna\Database\Src;
+namespace Yonna\Database\Driver;
 
-use Yonna\Config\Arrow;
 use Yonna\Core;
+use Yonna\Database\Config;
 use Yonna\Exception\Exception;
 
 class Coupling
@@ -22,7 +22,7 @@ class Coupling
     public static function connect($conf = 'default', $mustDbType = null): object
     {
         if (static::$config === null) {
-            static::$config = Arrow::fetch()['database'];
+            static::$config = Config::fetch();
             $dbKeys = array_keys(static::$config);
             array_walk($dbKeys, function ($key) {
                 static::$transTrace[strtoupper($key)] = 0;
@@ -42,7 +42,7 @@ class Coupling
         if (empty($link['host']) || empty($link['port'])) Exception::throw('Lack of host/port address');
         $u = md5(var_export($link, true));
         if (empty(static::$db[$u])) {
-            static::$db[$u] = Core::singleton("\\Core\Core\\src\\{$link['type']}", $link);
+            static::$db[$u] = Core::singleton("\\Yonna\\Database\\Driver\\{$link['type']}", $link);
         }
         return static::$db[$u];
     }

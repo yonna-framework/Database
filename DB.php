@@ -3,8 +3,8 @@
 
 namespace Yonna\Database;
 
-use Yonna\Database\Src\Coupling;
-use Yonna\Database\Src\Type;
+use Yonna\Database\Driver\Coupling;
+use Yonna\Database\Driver\Type;
 
 /**
  * Class DB
@@ -14,7 +14,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return object|\Yonna\Database\Src\Mongo|\Yonna\Database\Mssql|\Yonna\Database\Mysql|\Yonna\Database\Pgsql|\Yonna\Database\Redis|\Yonna\Database\Sqlite
+     * @return object|\Yonna\Database\Driver\Mongo|\Yonna\Database\Driver\Mssql|\Yonna\Database\Driver\Mysql|\Yonna\Database\Driver\Pgsql|\Yonna\Database\Driver\Redis|\Yonna\Database\Driver\Sqlite
      */
     public static function connect($conf = 'default')
     {
@@ -23,7 +23,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Src\Mysql
+     * @return \Yonna\Database\Driver\Mysql
      */
     public static function mysql($conf = 'mysql')
     {
@@ -32,7 +32,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Src\Pgsql
+     * @return \Yonna\Database\Driver\Pgsql
      */
     public static function pgsql($conf = 'pgsql')
     {
@@ -41,7 +41,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Src\Mssql
+     * @return \Yonna\Database\Driver\Mssql
      */
     public static function mssql($conf = 'mssql')
     {
@@ -50,7 +50,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Src\Sqlite
+     * @return \Yonna\Database\Driver\Sqlite
      */
     public static function sqlite($conf = 'sqlite')
     {
@@ -59,7 +59,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Src\Mongo
+     * @return \Yonna\Database\Driver\Mongo
      */
     public static function mongo($conf = 'mongo')
     {
@@ -68,7 +68,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Src\Redis
+     * @return \Yonna\Database\Driver\Redis
      */
     public static function redis($conf = 'redis')
     {

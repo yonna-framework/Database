@@ -1,6 +1,6 @@
 <?php
 
-namespace Yonna\Database\Src;
+namespace Yonna\Database\Driver;
 
 use Exception;
 

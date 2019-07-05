@@ -1,9 +1,9 @@
 <?php
 
-namespace Yonna\Database\Src;
+namespace Yonna\Database\Driver;
 
-use Yonna\Config\Arrow;
 use Yonna\Database\DB;
+use Yonna\Foundation\System;
 
 class Cache
 {
@@ -28,7 +28,7 @@ class Cache
     private static function timeout(int $timeout): int
     {
         if ($timeout <= 0) return 0;
-        $min_timeout = Arrow::env('DB_CACHE_MINIMUM_TIMEOUT') ?? self::DEFAULT_MINIMUM_TIMEOUT;
+        $min_timeout = System::env('DB_CACHE_MINIMUM_TIMEOUT') ?? self::DEFAULT_MINIMUM_TIMEOUT;
         if ($timeout < $min_timeout) $timeout = $min_timeout;
         return $timeout;
     }

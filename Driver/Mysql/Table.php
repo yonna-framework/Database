@@ -1,27 +1,30 @@
 <?php
 /**
- * 数据库连接类，依赖 PDO_SQLITE 扩展
- * version >= 3
+ * 数据库连接构建类，依赖 PDO_MYSQL 扩展
+ * mysql version >= 5.7
  */
 
-namespace Yonna\Database\Src;
+namespace Yonna\Database\Driver\Mysql;
 
 use Exception;
+use Yonna\Database\Driver\AbstractPDO;
+use Yonna\Database\Driver\Type;
 
-class Sqlite extends AbstractPDO
+class Table extends AbstractPDO
 {
 
     /**
-     * 构造方法
-     *
+     * Table constructor.
      * @param array $setting
+     * @param array $options
      */
-    public function __construct(array $setting)
+    public function __construct(array $setting, array $options)
     {
         parent::__construct($setting);
-        $this->charset = $setting['charset'] ?: 'utf8';
-        $this->db_type = DBType::SQLITE;
+        $this->db_type = Type::MYSQL;
+        $this->charset = $setting['charset'] ?: 'utf8mb4';
         $this->selectSql = 'SELECT%DISTINCT% %FIELD% FROM %TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%LIMIT% %UNION%%LOCK%%COMMENT%';
+        $this->options = $options;
     }
 
     /**
@@ -31,32 +34,6 @@ class Sqlite extends AbstractPDO
     public function __destruct()
     {
         parent::__destruct();
-    }
-
-
-    /**
-     * 哪个表
-     *
-     * @param string $table
-     * @return self
-     */
-    public function table($table)
-    {
-        $this->resetAll();
-        $table = str_replace([' as ', ' AS ', ' As ', ' aS ', ' => '], ' ', trim($table));
-        $tableEX = explode(' ', $table);
-        if (count($tableEX) === 2) {
-            $this->options['table'] = $tableEX[1];
-            $this->options['table_origin'] = $tableEX[0];
-            if (!isset($this->options['alia'])) {
-                $this->options['alia'] = array();
-            }
-            $this->options['alia'][$tableEX[1]] = $tableEX[0];
-        } else {
-            $this->options['table'] = $table;
-            $this->options['table_origin'] = null;
-        }
-        return $this;
     }
 
     /**
@@ -136,14 +113,11 @@ class Sqlite extends AbstractPDO
      * @param $target
      * @param $join
      * @param array $req
-     * @param string $type INNER | LEFT
+     * @param string $type INNER | OUTER | LEFT | RIGHT
      * @return self
      */
-    public function join($target, $join, $req = [], $type = 'INNER')
+    public function join($target, $join, $req = array(), $type = 'INNER')
     {
-        if (!in_array($type, ['INNER', 'LEFT'])) {
-            Exception::abort("Join not support {$type} yet");
-        }
         if ($target && $join) {
             $join = str_replace([' as ', ' AS ', ' As ', ' aS ', ' => '], ' ', trim($join));
             $originJoin = $join = explode(' ', $join);
@@ -331,17 +305,43 @@ class Sqlite extends AbstractPDO
     }
 
     /**
-     * @param array $where
+     * @param $field
+     * @param $value
      * @return self
      */
-    public function where(array $where)
+    public function findInSetOr($field, $value)
     {
-        if ($where) {
-            foreach ($where as $k => $v) {
-                $this->equalTo($k, $v);
-            }
-        }
-        return $this;
+        return $this->whereOperat(self::findInSetOr, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function notFindInSetOr($field, $value)
+    {
+        return $this->whereOperat(self::notFindInSetOr, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function findInSetAnd($field, $value)
+    {
+        return $this->whereOperat(self::findInSetAnd, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function notFindInSetAnd($field, $value)
+    {
+        return $this->whereOperat(self::notFindInSetAnd, $field, $value);
     }
 
     /**
@@ -641,56 +641,6 @@ class Sqlite extends AbstractPDO
         return $this;
     }
 
-    /**
-     * 统计设定
-     * @param $statTimeRange
-     * @param $timeField
-     * @param string $groupBy
-     * @return self
-     */
-    public function statRange($statTimeRange, $timeField, $groupBy = null)
-    {
-        if (!$timeField) {
-            return $this;
-        }
-        if ($groupBy) {
-            $groupBy = (array)$groupBy;
-            foreach ($groupBy as $k => $v) {
-                $this->field($v);
-                $this->groupBy($v);
-            }
-        }
-        $this->field("COUNT(0) AS 'qty'");
-        switch ($statTimeRange) {
-            case 'Y':
-                $this->field("SUBSTR({$timeField}, 1, 4) AS 't'");
-                $this->groupBy("SUBSTR({$timeField}, 1, 4)");
-                break;
-            case 'm':
-                $this->field("SUBSTR({$timeField}, 1, 7) AS 't'");
-                $this->groupBy("SUBSTR({$timeField}, 1, 7)");
-                break;
-            case 'd':
-                $this->field("SUBSTR({$timeField}, 1, 10) AS 't'");
-                $this->groupBy("SUBSTR({$timeField}, 1, 10)");
-                break;
-            case 'H':
-                $this->field("SUBSTR({$timeField}, 1, 13) AS 't'");
-                $this->groupBy("SUBSTR({$timeField}, 1, 13)");
-                break;
-            case 'i':
-                $this->field("SUBSTR({$timeField}, 1, 16) AS 't'");
-                $this->groupBy("SUBSTR({$timeField}, 1, 16)");
-                break;
-            case 's':
-                $this->field("SUBSTR({$timeField}, 1, 19) AS 't'");
-                $this->groupBy("SUBSTR({$timeField}, 1, 19)");
-                break;
-            default:
-                break;
-        }
-        return $this;
-    }
 
     /**  @tips 终结操作 */
 
@@ -700,7 +650,7 @@ class Sqlite extends AbstractPDO
      */
     public function now()
     {
-        return array('exp', "select datetime(CURRENT_TIMESTAMP,'localtime')");
+        return array('exp', 'now()');
     }
 
     /**
@@ -753,7 +703,6 @@ class Sqlite extends AbstractPDO
         $count = $this->query($sqlCount);
         $count = reset($count)['hcount'];
         $count = (int)$count;
-        //
         $result = array();
         $per = !$per ? 10 : $per;
         $end = ceil($count / $per);
@@ -765,7 +714,7 @@ class Sqlite extends AbstractPDO
         $result['page']['end'] = (int)$end;
         return $result;
     }
-    
+
     /**
      * 统计
      * @param int $field
@@ -952,7 +901,7 @@ class Sqlite extends AbstractPDO
         }
         $sql .= $where;
         if (!strpos($table, ',')) {
-            //  单表更新支持order和limit
+            // 单表更新支持order和limit
             $sql .= $this->parseOrderBy(!empty($this->options['order']) ? $this->options['order'] : '')
                 . $this->parseLimit(!empty($this->options['limit']) ? $this->options['limit'] : '');
         }

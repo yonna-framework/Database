@@ -3,7 +3,7 @@
 namespace Yonna\Database;
 
 use Exception;
-use Yonna\Database\Src\Type;
+use Yonna\Database\Driver\Type;
 use Yonna\Foundation\System;
 
 class Config
