@@ -4,7 +4,7 @@ namespace Yonna\Database\Driver;
 
 use Yonna\Core;
 use Yonna\Database\Config;
-use Yonna\Exception\Exception;
+use Yonna\Throwable\Exception;
 
 class Coupling
 {

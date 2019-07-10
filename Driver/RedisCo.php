@@ -2,7 +2,7 @@
 
 namespace Yonna\Database\Driver;
 
-use Yonna\Exception\Exception;
+use Yonna\Throwable\Exception;
 
 class RedisCo extends Redis
 {
