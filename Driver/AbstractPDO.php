@@ -5,6 +5,7 @@ namespace Yonna\Database\Driver;
 use PDO;
 use PDOException;
 use PDOStatement;
+use Yonna\Database\Record\Record;
 use Yonna\Throwable\Exception;
 use Yonna\Foundation\Str;
 use Yonna\Foundation\Moment;
@@ -163,7 +164,7 @@ abstract class AbstractPDO extends AbstractDB
     protected function askType($type, $msg)
     {
         if ($this->db_type !== $type) {
-            Exception::abort("{$msg} not support {$this->db_type} yet");
+            Exception::database("{$msg} not support {$this->db_type} yet");
         }
     }
 
@@ -213,7 +214,7 @@ abstract class AbstractPDO extends AbstractDB
                         );
                         break;
                     default:
-                        Exception::abort("{$this->db_type} not support PDO yet");
+                        Exception::database("{$this->db_type} not support PDO yet");
                         break;
                 }
             } catch (PDOException $e) {
@@ -453,7 +454,7 @@ abstract class AbstractPDO extends AbstractDB
                     }
                     break;
                 default:
-                    Exception::abort("Field Type not support {$this->db_type} yet");
+                    Exception::database("Field Type not support {$this->db_type} yet");
                     break;
             }
             if (!$result) Exception::throw("{$this->db_type} get type fail");
@@ -1163,7 +1164,7 @@ abstract class AbstractPDO extends AbstractDB
      * @param string $operat see self
      * @param string $field
      * @param null $value
-     * @return self | Mysql | Pgsql | Mssql | Sqlite
+     * @return self | Mysql\Table | Pgsql | Mssql | Sqlite
      */
     protected function whereOperat($operat, $field, $value = null)
     {
@@ -1536,7 +1537,7 @@ abstract class AbstractPDO extends AbstractDB
                     ), $sql);
                 break;
             default:
-                Exception::abort("ParseSql not support {$this->db_type} yet");
+                Exception::database("ParseSql not support {$this->db_type} yet");
                 break;
         }
         return $sql;
@@ -1584,7 +1585,7 @@ abstract class AbstractPDO extends AbstractDB
     {
         $table = $this->getTable();
         if (!$table) {
-            Exception::abort('lose table');
+            Exception::database('lose table');
         }
         $this->fetchSql = true;
         return $this;
@@ -1599,9 +1600,10 @@ abstract class AbstractPDO extends AbstractDB
      */
     public function query($query = '', $fetchMode = PDO::FETCH_ASSOC)
     {
+        parent::query($query);
         $table = $this->getTable();
         if (!$table) {
-            Exception::abort('lose table');
+            Exception::database('lose table');
         }
         $query = trim($query);
         $this->lastSql = $query;
@@ -1623,7 +1625,7 @@ abstract class AbstractPDO extends AbstractDB
         }
         //释放前次的查询结果
         if (!$this->PDOStatement = $this->execute($query)) {
-            Exception::abort($this->getError());
+            Exception::database($this->getError());
         }
 
         if ($statement === 'select' || $statement === 'show') {

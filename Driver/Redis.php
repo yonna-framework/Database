@@ -27,6 +27,7 @@ class Redis extends AbstractDB
      * @access public
      * @param array $setting
      * @param RedisSwoole | null $RedisDriver
+     * @throws Exception\DatabaseException
      */
     public function __construct(array $setting, $RedisDriver = null)
     {
@@ -37,7 +38,7 @@ class Redis extends AbstractDB
                     $RedisDriver = new RedisDriver();
                 } catch (\Exception $e) {
                     $this->redis = null;
-                    Exception::throw('Redis遇到问题或未安装，请暂时停用Redis以减少阻塞卡顿');
+                    Exception::database('Redis遇到问题或未安装，请暂时停用Redis以减少阻塞卡顿');
                 }
             }
         }
@@ -163,6 +164,7 @@ class Redis extends AbstractDB
                 default:
                     break;
             }
+            $this->redis->echo('get');
             return $value;
         }
     }

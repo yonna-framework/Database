@@ -13,5 +13,6 @@ class Type
     const SQLITE = 'Sqlite';
     const MONGO = 'Mongo';
     const REDIS = 'Redis';
+    const REDIS_CO = 'RedisCo';
 
 }

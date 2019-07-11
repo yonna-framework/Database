@@ -6,7 +6,7 @@
 
 namespace Yonna\Database\Driver\Mysql;
 
-use Exception;
+use Yonna\Throwable\Exception;
 use Yonna\Database\Driver\AbstractPDO;
 use Yonna\Database\Driver\Type;
 
@@ -779,7 +779,6 @@ class Table extends AbstractPDO
      * @access public
      * @param mixed $data 数据
      * @return integer
-     * @throws Exception
      */
     public function insert($data)
     {
@@ -819,7 +818,6 @@ class Table extends AbstractPDO
      * @access public
      * @param mixed $dataSet 数据集
      * @return false | integer
-     * @throws Exception
      */
     public function insertAll($dataSet)
     {
@@ -863,7 +861,7 @@ class Table extends AbstractPDO
      * @param mixed $data 数据
      * @param bool $sure
      * @return false | integer
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     public function update($data, $sure = false)
     {
@@ -896,7 +894,7 @@ class Table extends AbstractPDO
         }
         $where = $this->parseWhere(!empty($this->options['where']) ? $this->options['where'] : '');
         if (!$where && $sure !== true) {
-            throw new Exception('update must be sure when without where：' . $sql);
+            Exception::database('update must be sure when without where：' . $sql);
         }
         $sql .= $where;
         if (!strpos($table, ',')) {
@@ -913,7 +911,7 @@ class Table extends AbstractPDO
      * @access public
      * @param bool $sure
      * @return false | integer
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     public function delete($sure = false)
     {
@@ -927,7 +925,7 @@ class Table extends AbstractPDO
         }
         $where = $this->parseWhere(!empty($this->options['where']) ? $this->options['where'] : '');
         if (!$where && $sure !== true) {
-            throw new Exception('delete must be sure when without where');
+            Exception::database('delete must be sure when without where');
         }
         $sql .= $where;
         if (!strpos($table, ',')) {
@@ -944,7 +942,6 @@ class Table extends AbstractPDO
      * @alert 必须注意，这个方法一经执行会“清空”原来的“所有数据”及“自增量”
      * @param bool $sure 确认执行，防止误操作
      * @return self
-     * @throws Exception
      */
     public function truncate($sure = false)
     {

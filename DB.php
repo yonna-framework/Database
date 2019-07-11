@@ -5,12 +5,29 @@ namespace Yonna\Database;
 
 use Yonna\Database\Driver\Coupling;
 use Yonna\Database\Driver\Type;
+use Yonna\Database\Record\Record;
 
 /**
  * Class DB
  */
 class DB
 {
+
+    /**
+     * 启用记录
+     */
+    public static function enableRecord()
+    {
+        Record::enableRecord();
+    }
+
+    /**
+     * 获取记录
+     */
+    public static function getRecord()
+    {
+        return Record::getRecord();
+    }
 
     /**
      * @param string $conf

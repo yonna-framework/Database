@@ -939,7 +939,7 @@ class Table extends AbstractPDO
         }
         $where = $this->parseWhere(!empty($this->options['where']) ? $this->options['where'] : '');
         if (!$where && $sure !== true) {
-            throw new Exception('update must be sure when without where：' . $sql);
+            Exception::database('update must be sure when without where：' . $sql);
         }
         $sql .= $where;
         if (!strpos($table, ',')) {
@@ -970,7 +970,7 @@ class Table extends AbstractPDO
         }
         $where = $this->parseWhere(!empty($this->options['where']) ? $this->options['where'] : '');
         if (!$where && $sure !== true) {
-            throw new Exception('delete must be sure when without where');
+            Exception::database('delete must be sure when without where');
         }
         $sql .= $where;
         if (!strpos($table, ',')) {

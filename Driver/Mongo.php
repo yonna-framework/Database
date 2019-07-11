@@ -32,7 +32,6 @@ class Mongo
     /**
      * @param string $collection
      * @return Collection count
-     * @throws Exception
      */
     public function collection(string $collection): Collection
     {

@@ -2,7 +2,8 @@
 
 namespace Yonna\Database\Driver;
 
-use Exception;
+use Yonna\Database\Record\Record;
+use Yonna\Throwable\Exception;
 
 abstract class AbstractDB
 {
@@ -131,12 +132,12 @@ abstract class AbstractDB
     /**
      * 获取 DSN
      * @return string
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     protected function dsn()
     {
         if (empty($this->db_type)) {
-            throw new Exception('Dsn type is Empty');
+            Exception::database('Dsn type is Empty');
         }
         if (!$this->dsn) {
             switch ($this->db_type) {
@@ -154,13 +155,19 @@ abstract class AbstractDB
                     break;
                 case Type::MONGO:
                     if ($this->account && $this->password) {
-                        $this->dsn = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}";
+                        $this->dsn = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}/{$this->name}";
                     } else {
-                        $this->dsn = "mongodb://{$this->host}:{$this->port}";
+                        $this->dsn = "mongodb://{$this->host}:{$this->port}/{$this->name}";
                     }
                     break;
+                case Type::REDIS:
+                    $this->dsn = "redis://{$this->password}@{$this->host}:{$this->port}";
+                    break;
+                case Type::REDIS_CO:
+                    $this->dsn = "redisco://{$this->password}@{$this->host}:{$this->port}";
+                    break;
                 default:
-                    throw new Exception("{$this->db_type} type is not supported for the time being");
+                    Exception::database("{$this->db_type} type is not supported for the time being");
                     break;
             }
         }
@@ -206,6 +213,16 @@ abstract class AbstractDB
     {
         $this->use_crypto = $use_crypto;
         return $this;
+    }
+
+    /**
+     * @tips 请求接口
+     * @param string $query
+     * @return void
+     */
+    protected function query(string $query)
+    {
+        Record::addRecord($this->db_type, $this->dsn(), $query);
     }
 
 
