@@ -37,9 +37,9 @@ class Coupling
                 $link[$ck] = $cv ?? null;
             }
         }
-        if (empty($link['type'])) Exception::throw('Lack type of database');
-        if ($mustDbType && $mustDbType !== $link['type']) Exception::throw('src type check no pass');
-        if (empty($link['host']) || empty($link['port'])) Exception::throw('Lack of host/port address');
+        if (empty($link['type'])) Exception::params('Lack type of database');
+        if ($mustDbType && $mustDbType !== $link['type']) Exception::params('src type check no pass');
+        if (empty($link['host']) || empty($link['port'])) Exception::params('Lack of host/port address');
         $u = md5(var_export($link, true));
         if (empty(static::$db[$u])) {
             static::$db[$u] = Core::singleton("\\Yonna\\Database\\Driver\\{$link['type']}", $link);

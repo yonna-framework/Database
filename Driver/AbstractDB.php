@@ -88,19 +88,19 @@ abstract class AbstractDB
      */
     public function __construct(array $setting)
     {
-        $this->project_key = $setting['project_key'];
-        $this->host = $setting['host'];
-        $this->port = $setting['port'];
-        $this->account = $setting['account'];
-        $this->password = $setting['password'];
-        $this->name = $setting['name'];
-        $this->charset = $setting['charset'] ?: 'utf8';
-        $this->db_file_path = $setting['db_file_path'];
-        $this->auto_cache = $setting['auto_cache'];
-        $this->auto_crypto = $setting['auto_crypto'];
-        $this->crypto_type = $setting['crypto_type'];
-        $this->crypto_secret = $setting['crypto_secret'];
-        $this->crypto_iv = $setting['crypto_iv'];
+        $this->project_key = $setting['project_key'] ?? null;
+        $this->host = $setting['host'] ?? null;
+        $this->port = $setting['port'] ?? null;
+        $this->account = $setting['account'] ?? null;
+        $this->password = $setting['password'] ?? null;
+        $this->name = $setting['name'] ?? null;
+        $this->charset = $setting['charset'] ?? 'utf8';
+        $this->db_file_path = $setting['db_file_path'] ?? null;
+        $this->auto_cache = $setting['auto_cache'] ?? false;
+        $this->auto_crypto = $setting['auto_crypto'] ?? false;
+        $this->crypto_type = $setting['crypto_type'] ?? null;
+        $this->crypto_secret = $setting['crypto_secret'] ?? null;
+        $this->crypto_iv = $setting['crypto_iv'] ?? null;
         //
         $this->Crypto = new Crypto($this->crypto_type, $this->crypto_secret, $this->crypto_iv);
         return $this;
@@ -154,9 +154,9 @@ abstract class AbstractDB
                     break;
                 case Type::MONGO:
                     if ($this->account && $this->password) {
-                        $this->dsn = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}/{$this->name}";
+                        $this->dsn = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}";
                     } else {
-                        $this->dsn = "mongodb://{{$this->host}:{$this->port}/{$this->name}";
+                        $this->dsn = "mongodb://{$this->host}:{$this->port}";
                     }
                     break;
                 default:

@@ -3,66 +3,44 @@
 namespace Yonna\Database\Driver;
 
 use Exception;
-use MongoDB\Driver\BulkWrite;
-use MongoDB\Driver\Exception\BulkWriteException;
-use MongoDB;
+use Yonna\Database\Driver\Mongo\Collection;
 
-class Mongo extends AbstractDB
+class Mongo
 {
 
-    protected $db_type = Type::MONGO;
+    private $setting = null;
 
     /**
-     * @var MongoDB\Driver\Manager | null
+     * 构造方法
      *
-     */
-    private $mongoManager = null;
-
-    /**
-     * 架构函数 取得模板对象实例
-     * @access public
      * @param array $setting
-     * @throws Exception
      */
     public function __construct(array $setting)
     {
-        parent::__construct($setting);
-        if ($this->mongoManager == null) {
-            if (class_exists('\\MongoDB\Driver\Manager')) {
-                try {
-                    $this->mongoManager = new MongoDB\Driver\Manager($this->dsn());
-                } catch (Exception $e) {
-                    $this->mongoManager = null;
-                    throw new Exception('MongoDB遇到问题或未安装，请暂时停用MongoDB以减少阻塞卡顿');
-                }
-            }
-        }
-        return $this;
+        $this->setting = $setting;
     }
-
-    public function __destruct()
-    {
-        parent::__destruct();
-    }
-
 
     /**
-     * @param array $data
-     * @return int
+     * 析构方法
+     * @access public
+     */
+    public function __destruct()
+    {
+        $this->setting = null;
+    }
+
+    /**
+     * @param string $collection
+     * @return Collection count
      * @throws Exception
      */
-    public function insert(array $data): int
+    public function collection(string $collection): Collection
     {
-        $bulk = new BulkWrite();
-        $bulk->insert($data);
-        $count = 0;
-        try {
-            $result = $this->mongoManager->executeBulkWrite('ppm.test', $bulk);
-            $count = $result->getInsertedCount();
-        } catch (BulkWriteException $e) {
-            throw new Exception($e->getMessage());
+        if (empty($collection)) {
+            \Yonna\Throwable\Exception::database('collection error');
         }
-        return $count;
+        $this->setting['collection'] = $collection;
+        return (new Collection($this->setting));
     }
 
 }

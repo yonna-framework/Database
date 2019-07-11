@@ -27,6 +27,9 @@ class DB
      */
     public static function mysql($conf = 'mysql')
     {
+        if (is_array($conf)) {
+            $conf['type'] = Type::MYSQL;
+        }
         return Coupling::connect($conf, Type::MYSQL);
     }
 
@@ -36,6 +39,9 @@ class DB
      */
     public static function pgsql($conf = 'pgsql')
     {
+        if (is_array($conf)) {
+            $conf['type'] = Type::PGSQL;
+        }
         return Coupling::connect($conf, Type::PGSQL);
     }
 
@@ -45,6 +51,9 @@ class DB
      */
     public static function mssql($conf = 'mssql')
     {
+        if (is_array($conf)) {
+            $conf['type'] = Type::MSSQL;
+        }
         return Coupling::connect($conf, Type::MSSQL);
     }
 
@@ -54,6 +63,9 @@ class DB
      */
     public static function sqlite($conf = 'sqlite')
     {
+        if (is_array($conf)) {
+            $conf['type'] = Type::SQLITE;
+        }
         return Coupling::connect($conf, Type::SQLITE);
     }
 
@@ -63,6 +75,9 @@ class DB
      */
     public static function mongo($conf = 'mongo')
     {
+        if (is_array($conf)) {
+            $conf['type'] = Type::MONGO;
+        }
         return Coupling::connect($conf, Type::MONGO);
     }
 
@@ -72,6 +87,9 @@ class DB
      */
     public static function redis($conf = 'redis')
     {
+        if (is_array($conf)) {
+            $conf['type'] = Type::REDIS;
+        }
         return Coupling::connect($conf, Type::REDIS);
     }
 
