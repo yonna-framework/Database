@@ -5,7 +5,6 @@ namespace Yonna\Database\Driver;
 use PDO;
 use PDOException;
 use PDOStatement;
-use Yonna\Database\Record\Record;
 use Yonna\Throwable\Exception;
 use Yonna\Foundation\Str;
 use Yonna\Foundation\Moment;
