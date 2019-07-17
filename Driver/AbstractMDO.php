@@ -58,70 +58,48 @@ abstract class AbstractMDO extends AbstractDB
 
     /**
      * 设置执行命令
+     * @param $command
      * @param mixed ...$options
-     */
-    private function setCommand(...$options)
-    {
-        $backtrace = debug_backtrace();
-        $func_name = $backtrace[1]['function'];
-        $command = null;
-        switch ($func_name) {
-            case 'insert':
-                $command = "db.{$this->collection}.insertOne(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
-                break;
-            case 'insertAll':
-                $command = "db.{$this->collection}.insertMany(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
-                break;
-            default:
-                break;
-        }
-        parent::query($command);
-    }
-
-    /**
-     * @param array $data
-     * @return int count
+     * @return mixed
      * @throws Exception\DatabaseException
      */
-    public function insert(array $data): int
+    protected function query($command, ...$options)
     {
-        $this->setCommand($data);
-        $bulk = new BulkWrite();
-        $bulk->insert($data);
-        $count = 0;
+        $result = null;
+        $commandStr = "un know command";
         try {
-            $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
-            $ids = $result->getUpsertedIds();
-            print_r($ids);
-            $count = $result->getInsertedCount();
+            switch ($command) {
+                case 'insert':
+                    $commandStr = "db.{$this->collection}.insertOne(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
+                    $data = $options[0];
+                    $bulk = new BulkWrite();
+                    $bulk->insert($data);
+                    $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
+                    $ids = $result->getUpsertedIds();
+                    $count = $result->getInsertedCount();
+                    $result = [$ids, $count];
+                    break;
+                case
+                'insertAll':
+                    $commandStr = "db.{$this->collection}.insertMany(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
+                    $data = $options[0];
+                    $bulk = new BulkWrite();
+                    foreach ($data as $d) {
+                        $bulk->insert($d);
+                    }
+                    $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
+                    $ids = $result->getUpsertedIds();
+                    $count = $result->getInsertedCount();
+                    $result = [$ids, $count];
+                    break;
+            }
         } catch (BulkWriteException $e) {
             Exception::database($e->getMessage());
         }
-        return $count;
+        parent::query($commandStr);
+        return $result;
     }
 
-    /**
-     * @param array $data
-     * @return int count
-     * @throws Exception\DatabaseException
-     */
-    public function insertAll(array $data): int
-    {
-        $this->setCommand($data);
-        $bulk = new BulkWrite();
-        foreach ($data as $d) {
-            $bulk->insert($d);
-        }
-        $count = 0;
-        try {
-            $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
-            // $ids = $result->getUpsertedIds();
-            $count = $result->getInsertedCount();
-        } catch (BulkWriteException $e) {
-            Exception::database($e->getMessage());
-        }
-        return $count;
-    }
 
     public function test()
     {
