@@ -54,6 +54,12 @@ abstract class AbstractPDO extends AbstractDB
     protected $selectSql = null;
 
     /**
+     * where条件，哪个表
+     * @var string
+     */
+    protected $where_table = '';
+
+    /**
      * 多重嵌套事务处理堆栈
      */
     protected $transTrace = 0;
@@ -115,6 +121,7 @@ abstract class AbstractPDO extends AbstractDB
         $this->parameters = array();
         $this->currentFieldType = array();
         $this->tempFieldType = array();
+        $this->where_table = '';
         parent::resetAll();
     }
 

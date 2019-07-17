@@ -39,22 +39,12 @@ abstract class AbstractDB
     protected $crypto_iv = null;
 
     /**
-     * where条件对象，实现无敌闭包
+     * where条件对象，实现闭包
      * @var array
      */
     protected $where = array();
 
-    /**
-     * where条件，哪个表
-     * @var string
-     */
-    protected $where_table = '';
 
-    /**
-     * where条件，哪个收集
-     * @var string
-     */
-    protected $where_collection = '';
 
 
     /**
@@ -132,8 +122,6 @@ abstract class AbstractDB
         $this->use_crypto = false;
         $this->error = null;
         $this->where = array();
-        $this->where_table = '';
-        $this->where_collection = '';
     }
 
 
