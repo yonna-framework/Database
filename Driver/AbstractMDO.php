@@ -67,34 +67,37 @@ abstract class AbstractMDO extends AbstractDB
     {
         $result = null;
         $commandStr = "un know command";
-        try {
-            switch ($command) {
-                case 'insert':
-                    $commandStr = "db.{$this->collection}.insertOne(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
-                    $data = $options[0];
-                    $bulk = new BulkWrite();
+        switch ($command) {
+            case 'insert':
+                $commandStr = "db.{$this->collection}.insertOne(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
+                $data = $options[0];
+                $bulk = new BulkWrite();
+                try {
                     $bulk->insert($data);
-                    $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
-                    $ids = $result->getUpsertedIds();
-                    $count = $result->getInsertedCount();
-                    $result = [$ids, $count];
-                    break;
-                case
-                'insertAll':
-                    $commandStr = "db.{$this->collection}.insertMany(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
-                    $data = $options[0];
-                    $bulk = new BulkWrite();
+                } catch (BulkWriteException $e) {
+                    Exception::database($e->getMessage());
+                }
+                $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
+                $ids = $result->getUpsertedIds();
+                $count = $result->getInsertedCount();
+                $result = [$ids, $count];
+                break;
+            case 'insertAll':
+                $commandStr = "db.{$this->collection}.insertMany(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
+                $data = $options[0];
+                $bulk = new BulkWrite();
+                try {
                     foreach ($data as $d) {
                         $bulk->insert($d);
                     }
-                    $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
-                    $ids = $result->getUpsertedIds();
-                    $count = $result->getInsertedCount();
-                    $result = [$ids, $count];
-                    break;
-            }
-        } catch (BulkWriteException $e) {
-            Exception::database($e->getMessage());
+                } catch (BulkWriteException $e) {
+                    Exception::database($e->getMessage());
+                }
+                $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
+                $ids = $result->getUpsertedIds();
+                $count = $result->getInsertedCount();
+                $result = [$ids, $count];
+                break;
         }
         parent::query($commandStr);
         return $result;
