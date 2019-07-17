@@ -54,20 +54,6 @@ abstract class AbstractPDO extends AbstractDB
     protected $selectSql = null;
 
     /**
-     * 最后一条执行的 sql
-     *
-     * @var string
-     */
-    protected $lastSql = '';
-
-    /**
-     * 是否不执行sql直接返回sql
-     *
-     * @var string
-     */
-    protected $fetchSql = false;
-
-    /**
      * 多重嵌套事务处理堆栈
      */
     protected $transTrace = 0;
@@ -127,8 +113,6 @@ abstract class AbstractPDO extends AbstractDB
     {
         $this->options = array();
         $this->parameters = array();
-        $this->fetchSql = false;
-        $this->lastSql = '';
         $this->currentFieldType = array();
         $this->tempFieldType = array();
         parent::resetAll();
@@ -145,9 +129,6 @@ abstract class AbstractPDO extends AbstractDB
             if ($this->pdo) {
                 $errorInfo = $this->pdo->errorInfo();
                 $error = $errorInfo[1] . ':' . $errorInfo[2];
-            }
-            if ('' != $this->lastSql) {
-                $error .= "\n [ SQL ] : " . $this->lastSql;
             }
         }
         return $error;
@@ -250,16 +231,6 @@ abstract class AbstractPDO extends AbstractDB
     public function lastInsertId()
     {
         return $this->pdo()->lastInsertId();
-    }
-
-    /**
-     * 返回最后一条执行的 sql
-     *
-     * @return  string
-     */
-    public function lastSQL()
-    {
-        return $this->lastSql;
     }
 
     /**
@@ -1577,20 +1548,6 @@ abstract class AbstractPDO extends AbstractDB
     }
 
     /**
-     * 设定为直接输出sql
-     * @return self | Mysql | Pgsql | Mssql | Sqlite
-     */
-    public function fetchSql()
-    {
-        $table = $this->getTable();
-        if (!$table) {
-            Exception::database('lose table');
-        }
-        $this->fetchSql = true;
-        return $this;
-    }
-
-    /**
      * 执行 SQL
      *
      * @param string $query
@@ -1599,15 +1556,13 @@ abstract class AbstractPDO extends AbstractDB
      */
     public function query($query = '', $fetchMode = PDO::FETCH_ASSOC)
     {
-        parent::query($query);
+        $query = trim($query);
+        if ($fetchQuery = parent::query($query)) {
+            return $fetchQuery;
+        }
         $table = $this->getTable();
         if (!$table) {
             Exception::database('lose table');
-        }
-        $query = trim($query);
-        $this->lastSql = $query;
-        if ($this->fetchSql === true) {
-            return $this->lastSql;
         }
 
         $rawStatement = explode(" ", $query);

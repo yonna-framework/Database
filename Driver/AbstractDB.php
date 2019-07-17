@@ -83,6 +83,13 @@ abstract class AbstractDB
     private $use_crypto = false;
 
     /**
+     * 是否不执行命令直接返回命令串
+     *
+     * @var string
+     */
+    protected $fetchQuery = false;
+
+    /**
      * 构造方法
      *
      * @param array $setting
@@ -104,6 +111,7 @@ abstract class AbstractDB
         $this->crypto_iv = $setting['crypto_iv'] ?? null;
         //
         $this->Crypto = new Crypto($this->crypto_type, $this->crypto_secret, $this->crypto_iv);
+        $this->fetchQuery = false;
         return $this;
     }
 
@@ -218,12 +226,25 @@ abstract class AbstractDB
     /**
      * @tips 请求接口
      * @param string $query
-     * @return void
+     * @return string | null
      */
     protected function query(string $query)
     {
         Record::addRecord($this->db_type, $this->dsn(), $query);
+        if ($this->fetchQuery === true) {
+            return $query;
+        }
+        return null;
     }
 
+    /**
+     * 设定为直接输出sql
+     * @return self | Mysql | Pgsql | Mssql | Sqlite
+     */
+    public function fetchQuery()
+    {
+        $this->fetchQuery = true;
+        return $this;
+    }
 
 }
