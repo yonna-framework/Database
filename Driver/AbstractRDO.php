@@ -2,6 +2,7 @@
 
 namespace Yonna\Database\Driver;
 
+use Yonna\Foundation\Str;
 use Yonna\Throwable\Exception;
 use Redis as RedisDriver;
 use Swoole\Coroutine\Redis as RedisSwoole;
@@ -20,7 +21,7 @@ abstract class AbstractRDO extends AbstractDB
      * @var RedisDriver | RedisSwoole | null
      *
      */
-    private $redis = null;
+    protected $redis = null;
 
     /**
      * 架构函数 取得模板对象实例
@@ -63,217 +64,64 @@ abstract class AbstractRDO extends AbstractDB
     }
 
     /**
-     * 最优化key
+     * 转化存储的key为分段式键
      * @param $key
      * @return string
      */
-    protected function tinyKey($key)
+    protected function parseKey($key)
     {
-        return gzdeflate($key);
+        $key = Str::snake($this->project_key . '::' . $key);
+        $key = str_replace('_', '::', $key);
+        return $key;
     }
 
     /**
-     * @param $key
-     * @return string
+     * 设置执行命令
+     * @param $command
+     * @param mixed ...$options
+     * @return mixed
      */
-    protected function parse($key)
+    protected function query($command, ...$options)
     {
-        return static::tinyKey($this->project_key . $key);
+        $result = null;
+        $commandStr = "un know command";
+        switch ($command) {
+            case 'flushAll':
+                $this->redis->flushAll();
+                $commandStr = 'FLUSHALL';
+                break;
+            case 'dbSize':
+                $result = $this->redis->dbSize();
+                $commandStr = 'DBSIZE';
+                break;
+            case 'delete':
+                $key = $this->parseKey($options[0]);
+                $this->redis->delete($key);
+                $commandStr = "DELETE {$key}";
+                break;
+            case 'expire':
+                $key = $this->parseKey($options[0]);
+                $this->redis->expire($key, $options[1]);
+                $commandStr = "EXPIRE {$key} {$options[1]}";
+                break;
+            case 'set':
+                $key = $this->parseKey($options[0]);
+                $value = $options[1] . $options[2];
+                $this->redis->set($key, $value);
+                $commandStr = "SET {$key} {$value}";
+                break;
+            case 'get':
+                $key = $this->parseKey($options[0]);
+                $value = $this->redis->get($key);
+                $type = substr($value, 0, 1);
+                $value = substr($value, 1);
+                $result = [$type, $value];
+                $commandStr = "GET {$key}";
+                break;
+        }
+        parent::query($commandStr);
+        return $result;
     }
 
-    /**
-     * 删除kEY
-     * @param $key
-     */
-    public function delete($key)
-    {
-        if ($this->redis !== null && $key) {
-            $this->redis->delete($this->parse($key));
-        }
-    }
-
-    /**
-     * 清空
-     * @param bool $sure
-     */
-    public function flushAll($sure = false)
-    {
-        if ($this->redis !== null && $sure === true) {
-            $this->redis->flushAll();
-        }
-    }
-
-    /**
-     * @return int
-     */
-    public function dbSize()
-    {
-        $size = -1;
-        if ($this->redis !== null) {
-            $size = $this->redis->dbSize();
-        }
-        return $size;
-    }
-
-    /**
-     * @param $key
-     * @param $value
-     * @param int $timeout <= 0 not expire
-     * @return void
-     */
-    public function set($key, $value, int $timeout = 0)
-    {
-        if ($this->redis !== null && $key) {
-            $key = $this->parse($key);
-            if (is_array($value)) {
-                $this->redis->set($key, self::TYPE_OBJ . json_encode($value));
-            } elseif (is_string($value)) {
-                $this->redis->set($key, self::TYPE_STR . $value);
-            } elseif (is_numeric($value)) {
-                $this->redis->set($key, self::TYPE_NUM . $value);
-            } else {
-                $this->redis->set($key, self::TYPE_STR . $value);
-            }
-            if ($timeout > 0) {
-                $this->redis->expire($key, $timeout);
-            }
-        }
-    }
-
-    /**
-     * @param $key
-     * @return bool|null|string|array
-     */
-    public function get($key)
-    {
-        if ($this->redis === null || !$key) {
-            return null;
-        } else {
-            $key = $this->parse($key);
-            $value = $this->redis->get($key);
-            $type = substr($value, 0, 1);
-            $value = substr($value, 1);
-            switch ($type) {
-                case self::TYPE_OBJ:
-                    $value = json_decode($value, true);
-                    break;
-                case self::TYPE_NUM:
-                    $value = round($value, 10);
-                    break;
-                case self::TYPE_STR:
-                default:
-                    break;
-            }
-            $this->redis->echo('get');
-            return $value;
-        }
-    }
-
-    /**
-     * @param $table
-     * @param $key
-     * @param $value
-     * @return void
-     */
-    public function hSet($table, $key, $value)
-    {
-        if ($this->redis !== null && $table && $key) {
-            $table = $this->parse($table);
-            if (is_array($value)) {
-                $this->redis->hSet($table, self::TYPE_OBJ . $key, json_encode($value));
-            } elseif (is_string($value)) {
-                $this->redis->hSet($table, self::TYPE_STR . $key, $value);
-            } elseif (is_numeric($value)) {
-                $this->redis->hSet($table, self::TYPE_NUM . $key, $value);
-            } else {
-                $this->redis->hSet($table, self::TYPE_STR . $key, $value);
-            }
-        }
-    }
-
-    /**
-     * @param $table
-     * @param $key
-     * @return bool|null|string|array
-     */
-    public function hGet($table, $key)
-    {
-        if ($this->redis === null || !$table || !$key) {
-            return null;
-        } else {
-            $table = $this->parse($table);
-            $value = $this->redis->hGet($table, $key);
-            $type = substr($value, 0, 1);
-            $value = substr($value, 1);
-            switch ($type) {
-                case self::TYPE_OBJ:
-                    $value = json_decode($value, true);
-                    break;
-                case self::TYPE_NUM:
-                    $value = round($value, 10);
-                    break;
-                case self::TYPE_STR:
-                default:
-                    break;
-            }
-            return $value;
-        }
-    }
-
-    /**
-     * @param $key
-     * @param int $value
-     * @return int | float
-     */
-    public function incr($key, $value = 1)
-    {
-        $answer = -1;
-        if ($this->redis === null || !$key) {
-            return $answer;
-        }
-        $key = $this->parse($key);
-        if ($value === 1) {
-            $answer = $this->redis->incr($key);
-        } else {
-            $answer = is_int($value) ? $this->redis->incrBy($key, $value) : $this->redis->incrByFloat($key, $value);
-        }
-        return $answer;
-    }
-
-    /**W
-     * @param $key
-     * @param int $value
-     * @return int
-     */
-    public function decr($key, $value = 1)
-    {
-        $answer = -1;
-        if ($this->redis === null || !$key) {
-            return $answer;
-        }
-        $key = $this->parse($key);
-        if ($value === 1) {
-            $answer = $this->redis->decr($key);
-        } else {
-            $answer = $this->redis->decrBy($key, $value);
-        }
-        return $answer;
-    }
-
-    /**
-     * @param $key
-     * @param $hashKey
-     * @param int $value
-     * @return int
-     */
-    public function hIncr($key, $hashKey, int $value = 1)
-    {
-        $answer = -1;
-        if ($this->redis !== null && $key) {
-            $key = $this->parse($key);
-            $answer = $this->redis->hIncrBy($key, $hashKey, $value);
-        }
-        return $answer;
-    }
 
 }

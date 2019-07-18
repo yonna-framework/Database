@@ -69,7 +69,6 @@ abstract class AbstractMDO extends AbstractDB
         $commandStr = "un know command";
         switch ($command) {
             case 'insert':
-                $commandStr = "db.{$this->collection}.insertOne(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
                 $data = $options[0];
                 $bulk = new BulkWrite();
                 try {
@@ -81,9 +80,9 @@ abstract class AbstractMDO extends AbstractDB
                 $ids = $result->getUpsertedIds();
                 $count = $result->getInsertedCount();
                 $result = [$ids, $count];
+                $commandStr = "db.{$this->collection}.insertOne(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
                 break;
             case 'insertAll':
-                $commandStr = "db.{$this->collection}.insertMany(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
                 $data = $options[0];
                 $bulk = new BulkWrite();
                 try {
@@ -97,6 +96,7 @@ abstract class AbstractMDO extends AbstractDB
                 $ids = $result->getUpsertedIds();
                 $count = $result->getInsertedCount();
                 $result = [$ids, $count];
+                $commandStr = "db.{$this->collection}.insertMany(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
                 break;
         }
         parent::query($commandStr);
