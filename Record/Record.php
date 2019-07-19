@@ -23,6 +23,12 @@ class Record
     private static $records = [];
 
     /**
+     * 时间基准
+     * @var array
+     */
+    private static $record_time = 0;
+
+    /**
      * 添加记录
      * @param string $dbType
      * @param string $connect
@@ -33,14 +39,15 @@ class Record
         if (static::$is_record !== true) {
             return;
         }
-        if (!isset(static::$records[$dbType])) {
-            static::$records[$dbType] = [];
-        }
-        if (!isset(static::$records[$dbType][$connect])) {
-            static::$records[$dbType][$connect] = [];
-        }
         if ($record) {
-            static::$records[$dbType][$connect][] = $record;
+            $microNow = 1000 * microtime(true);
+            static::$records[] = [
+                'type' => $dbType,
+                'connect' => $connect,
+                'query' => $record,
+                'dur' => round($microNow - static::$record_time,4) . 'ms',
+            ];
+            static::$record_time = $microNow;
         }
     }
 
@@ -50,6 +57,7 @@ class Record
     public static function enableRecord()
     {
         static::$is_record = true;
+        static::$record_time = 1000 * microtime(true);
     }
 
     /**
@@ -62,6 +70,7 @@ class Record
         if (isset(static::$records)) {
             $record = static::$records;
             static::$records = [];
+            static::$record_time = 0;
         }
         return $record;
     }

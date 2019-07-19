@@ -214,20 +214,15 @@ abstract class AbstractDB
     /**
      * @tips 请求接口
      * @param string $query
-     * @return string | null
+     * @throws Exception\DatabaseException
      */
     protected function query(string $query)
     {
         Record::addRecord($this->db_type, $this->dsn(), $query);
-        if ($this->fetchQuery === true) {
-            return $query;
-        }
-        return null;
     }
 
     /**
      * 设定为直接输出sql
-     * @return self | Mysql | Pgsql | Mssql | Sqlite
      */
     public function fetchQuery()
     {

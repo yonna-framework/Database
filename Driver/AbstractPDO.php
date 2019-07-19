@@ -1560,12 +1560,13 @@ abstract class AbstractPDO extends AbstractDB
      * @param string $query
      * @param int $fetchMode
      * @return mixed
+     * @throws Exception\DatabaseException
      */
     public function query($query = '', $fetchMode = PDO::FETCH_ASSOC)
     {
         $query = trim($query);
-        if ($fetchQuery = parent::query($query)) {
-            return $fetchQuery;
+        if ($this->fetchQuery === true) {
+            return $query;
         }
         $table = $this->getTable();
         if (!$table) {
@@ -1574,21 +1575,21 @@ abstract class AbstractPDO extends AbstractDB
 
         $rawStatement = explode(" ", $query);
         $statement = strtolower(trim($rawStatement[0]));
+        $result = null;
         //read model,check cache
         if ($statement === 'select' || $statement === 'show') {
-            $result = false;
             if ($this->auto_cache === Cache::FOREVER) {
                 $result = Cache::uGet($table, $query);
             } elseif (is_numeric($this->auto_cache)) {
                 $result = Cache::get($table . $query);
             }
-            if ($result) return $result;
         }
-        //释放前次的查询结果
-        if (!$this->PDOStatement = $this->execute($query)) {
-            Exception::database($this->getError());
+        if (!$result) {
+            // 执行新一轮的查询，并释放上一轮结果
+            if (!$this->PDOStatement = $this->execute($query)) {
+                Exception::database($this->getError());
+            }
         }
-
         if ($statement === 'select' || $statement === 'show') {
             $result = $this->PDOStatement->fetchAll($fetchMode);
             $result = $this->fetchFormat($result);
@@ -1597,20 +1598,21 @@ abstract class AbstractPDO extends AbstractDB
             } elseif (is_numeric($this->auto_cache)) {
                 Cache::set($table . $query, $result, (int)$this->auto_cache);
             }
-            return $result;
         } elseif ($statement === 'update' || $statement === 'delete') {
             if ($this->auto_cache === 'forever') {
                 Cache::clear($table);
             }
-            return $this->PDOStatement->rowCount();
+            $result = $this->PDOStatement->rowCount();
         } elseif ($statement === 'insert') {
             if ($this->auto_cache === Cache::FOREVER) {
                 Cache::clear($table);
             }
-            return $this->PDOStatement->rowCount();
+            $result = $this->PDOStatement->rowCount();
         } else {
-            return null;
+            $result = null;
         }
+        parent::query($query);
+        return $result;
     }
 
     /**
