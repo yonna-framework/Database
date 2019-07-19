@@ -1572,7 +1572,6 @@ abstract class AbstractPDO extends AbstractDB
         if (!$table) {
             Exception::database('lose table');
         }
-
         $rawStatement = explode(" ", $query);
         $statement = strtolower(trim($rawStatement[0]));
         $result = null;
@@ -1581,7 +1580,7 @@ abstract class AbstractPDO extends AbstractDB
             if ($this->auto_cache === Cache::FOREVER) {
                 $result = Cache::uGet($table, $query);
             } elseif (is_numeric($this->auto_cache)) {
-                $result = Cache::get($table . $query);
+                $result = Cache::get($table . '::' . $query);
             }
         }
         if (!$result) {
@@ -1589,27 +1588,27 @@ abstract class AbstractPDO extends AbstractDB
             if (!$this->PDOStatement = $this->execute($query)) {
                 Exception::database($this->getError());
             }
-        }
-        if ($statement === 'select' || $statement === 'show') {
-            $result = $this->PDOStatement->fetchAll($fetchMode);
-            $result = $this->fetchFormat($result);
-            if ($this->auto_cache === Cache::FOREVER) {
-                Cache::uSet($table, $query, $result);
-            } elseif (is_numeric($this->auto_cache)) {
-                Cache::set($table . $query, $result, (int)$this->auto_cache);
+            if ($statement === 'select' || $statement === 'show') {
+                $result = $this->PDOStatement->fetchAll($fetchMode);
+                $result = $this->fetchFormat($result);
+                if ($this->auto_cache === Cache::FOREVER) {
+                    Cache::uSet($table, $query, $result);
+                } elseif (is_numeric($this->auto_cache)) {
+                    Cache::set($table . '::' . $query, $result, (int)$this->auto_cache);
+                }
+            } elseif ($statement === 'update' || $statement === 'delete') {
+                if ($this->auto_cache === 'forever') {
+                    Cache::clear($table);
+                }
+                $result = $this->PDOStatement->rowCount();
+            } elseif ($statement === 'insert') {
+                if ($this->auto_cache === Cache::FOREVER) {
+                    Cache::clear($table);
+                }
+                $result = $this->PDOStatement->rowCount();
+            } else {
+                $result = null;
             }
-        } elseif ($statement === 'update' || $statement === 'delete') {
-            if ($this->auto_cache === 'forever') {
-                Cache::clear($table);
-            }
-            $result = $this->PDOStatement->rowCount();
-        } elseif ($statement === 'insert') {
-            if ($this->auto_cache === Cache::FOREVER) {
-                Cache::clear($table);
-            }
-            $result = $this->PDOStatement->rowCount();
-        } else {
-            $result = null;
         }
         parent::query($query);
         return $result;

@@ -64,18 +64,6 @@ abstract class AbstractRDO extends AbstractDB
     }
 
     /**
-     * 转化存储的key为分段式键
-     * @param $key
-     * @return string
-     */
-    protected function parseKey($key)
-    {
-        $key = Str::snake($this->project_key . '::' . $key);
-        $key = str_replace('_', '::', $key);
-        return $key;
-    }
-
-    /**
      * 设置执行命令
      * @param $command
      * @param mixed ...$options
@@ -95,23 +83,23 @@ abstract class AbstractRDO extends AbstractDB
                 $commandStr = 'DBSIZE';
                 break;
             case 'delete':
-                $key = $this->parseKey($options[0]);
+                $key = $options[0];
                 $this->redis->delete($key);
                 $commandStr = "DELETE {$key}";
                 break;
             case 'expire':
-                $key = $this->parseKey($options[0]);
+                $key = $options[0];
                 $this->redis->expire($key, $options[1]);
                 $commandStr = "EXPIRE {$key} {$options[1]}";
                 break;
             case 'set':
-                $key = $this->parseKey($options[0]);
+                $key = $options[0];
                 $value = $options[1] . $options[2];
                 $this->redis->set($key, $value);
                 $commandStr = "SET {$key} {$value}";
                 break;
             case 'get':
-                $key = $this->parseKey($options[0]);
+                $key = $options[0];
                 $value = $this->redis->get($key);
                 $type = substr($value, 0, 1);
                 $value = substr($value, 1);
