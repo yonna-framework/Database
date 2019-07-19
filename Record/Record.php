@@ -42,8 +42,7 @@ class Record
         if ($record) {
             $microNow = 1000 * microtime(true);
             static::$records[] = [
-                'type' => $dbType,
-                'connect' => $connect,
+                'connect' => "[$dbType]$connect",
                 'query' => $record,
                 'time' => round($microNow - static::$record_time,4) . 'ms',
             ];
