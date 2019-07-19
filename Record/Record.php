@@ -45,7 +45,7 @@ class Record
                 'type' => $dbType,
                 'connect' => $connect,
                 'query' => $record,
-                'dur' => round($microNow - static::$record_time,4) . 'ms',
+                'time' => round($microNow - static::$record_time,4) . 'ms',
             ];
             static::$record_time = $microNow;
         }
