@@ -4,7 +4,7 @@ namespace Yonna\Database\Driver;
 
 use Yonna\Throwable\Exception;
 
-class RedisCo extends AbstractRDO
+class RedisCo extends Redis
 {
 
     protected $db_type = Type::REDIS_CO;

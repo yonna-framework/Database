@@ -1,14 +1,14 @@
 <?php
 
 
-namespace Yonna\Database\Record;
+namespace Yonna\Database\Transaction;
 
 /**
- * 数据库记录
- * Class Record
- * @package Yonna\Database\Record
+ * 事务
+ * Class Transaction
+ * @package Yonna\Database\Transaction
  */
-class Record
+class Transaction
 {
 
     /**

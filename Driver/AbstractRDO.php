@@ -74,29 +74,57 @@ abstract class AbstractRDO extends AbstractDB
         $result = null;
         $commandStr = "un know command";
         switch ($command) {
-            case 'flushAll':
-                $this->redis->flushAll();
-                $commandStr = 'FLUSHALL';
-                break;
-            case 'dbSize':
+            case 'dbsize':
                 $result = $this->redis->dbSize();
                 $commandStr = 'DBSIZE';
+                break;
+            case 'flushall':
+                $this->redis->flushAll();
+                $commandStr = 'FLUSHALL';
                 break;
             case 'delete':
                 $key = $options[0];
                 $this->redis->delete($key);
-                $commandStr = "DELETE {$key}";
+                $commandStr = "DELETE '{$key}'";
                 break;
             case 'expire':
                 $key = $options[0];
                 $this->redis->expire($key, $options[1]);
-                $commandStr = "EXPIRE {$key} {$options[1]}";
+                $commandStr = "EXPIRE '{$key}' '{$options[1]}'";
                 break;
             case 'set':
                 $key = $options[0];
                 $value = $options[1] . $options[2];
                 $this->redis->set($key, $value);
-                $commandStr = "SET {$key} {$value}";
+                $commandStr = "SET '{$key}' '{$value}'";
+                break;
+            case 'setex':
+                $key = $options[0];
+                $value = $options[1] . $options[2];
+                $ttl = $options[3];
+                switch ($this->db_type) {
+                    case Type::REDIS:
+                        $this->redis->setex($key, $ttl, $value);
+                        break;
+                    case Type::REDIS_CO:
+                        $this->redis->setEx($key, $ttl, $value);
+                        break;
+                }
+                $commandStr = "SETEX '{$key}' {$ttl} '{$value}'";
+                break;
+            case 'psetex':
+                $key = $options[0];
+                $value = $options[1] . $options[2];
+                $ttl = $options[3];
+                switch ($this->db_type) {
+                    case Type::REDIS:
+                        $this->redis->psetex($key, $ttl, $value);
+                        break;
+                    case Type::REDIS_CO:
+                        $this->redis->psetEx($key, $ttl, $value);
+                        break;
+                }
+                $commandStr = "PSETEX '{$key}' {$ttl} '{$value}'";
                 break;
             case 'get':
                 $key = $options[0];
@@ -104,7 +132,7 @@ abstract class AbstractRDO extends AbstractDB
                 $type = substr($value, 0, 1);
                 $value = substr($value, 1);
                 $result = [$type, $value];
-                $commandStr = "GET {$key}";
+                $commandStr = "GET '{$key}'";
                 break;
         }
         parent::query($commandStr);

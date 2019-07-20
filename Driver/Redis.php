@@ -6,6 +6,41 @@ namespace Yonna\Database\Driver;
 class Redis extends AbstractRDO
 {
 
+    /**
+     * 格式化 值
+     * @param string $type
+     * @param string $value
+     * @return float|mixed|string
+     */
+    private function factoryValue(string $type, string $value)
+    {
+        switch ($type) {
+            case self::TYPE_OBJ:
+                $value = json_decode($value, true);
+                break;
+            case self::TYPE_NUM:
+                $value = round($value, 9, PHP_ROUND_HALF_UP);
+                break;
+            case self::TYPE_STR:
+            default:
+                break;
+        }
+        return $value;
+    }
+
+
+    /**
+     * DB size
+     * @return int
+     */
+    public function dbSize()
+    {
+        $size = -1;
+        if ($this->redis !== null) {
+            $size = $this->query('dbsize');
+        }
+        return $size;
+    }
 
     /**
      * 清空所有
@@ -14,20 +49,8 @@ class Redis extends AbstractRDO
     public function flushAll($sure = false)
     {
         if ($this->redis !== null && $sure === true) {
-            $this->query('flushAll');
+            $this->query('flushall');
         }
-    }
-
-    /**
-     * @return int
-     */
-    public function dbSize()
-    {
-        $size = -1;
-        if ($this->redis !== null) {
-            $size = $this->query('dbSize');
-        }
-        return $size;
     }
 
     /**
@@ -41,24 +64,84 @@ class Redis extends AbstractRDO
         }
     }
 
+
     /**
+     * 设置值，可设置过期时长
      * @param $key
      * @param $value
+     * @param int $ttl <= 0 forever unit:second
+     * @return void
+     */
+    public function set($key, $value, int $ttl = 0)
+    {
+        if ($this->redis !== null && $key) {
+            if ($ttl <= 0) {
+                if (is_array($value)) {
+                    $this->query('set', $key, self::TYPE_OBJ, json_encode($value));
+                } elseif (is_string($value)) {
+                    $this->query('set', $key, self::TYPE_STR, $value);
+                } elseif (is_numeric($value)) {
+                    $this->query('set', $key, self::TYPE_NUM, (string)$value);
+                } else {
+                    $this->query('set', $key, self::TYPE_STR, $value);
+                }
+            } else {
+                if (is_array($value)) {
+                    $this->query('setex', $key, self::TYPE_OBJ, json_encode($value), $ttl);
+                } elseif (is_string($value)) {
+                    $this->query('setex', $key, self::TYPE_STR, $value, $ttl);
+                } elseif (is_numeric($value)) {
+                    $this->query('setex', $key, self::TYPE_NUM, (string)$value, $ttl);
+                } else {
+                    $this->query('setex', $key, self::TYPE_STR, $value, $ttl);
+                }
+            }
+        }
+    }
+
+    /**
+     * 设置值，可设置毫秒级别的过期时长
+     * @param $key
+     * @param $value
+     * @param int $ttl <= 0 forever unit:milliseconds
+     * @return void
+     */
+    public function pset($key, $value, int $ttl = 0)
+    {
+        if ($this->redis !== null && $key) {
+            if ($ttl <= 0) {
+                if (is_array($value)) {
+                    $this->query('set', $key, self::TYPE_OBJ, json_encode($value));
+                } elseif (is_string($value)) {
+                    $this->query('set', $key, self::TYPE_STR, $value);
+                } elseif (is_numeric($value)) {
+                    $this->query('set', $key, self::TYPE_NUM, (string)$value);
+                } else {
+                    $this->query('set', $key, self::TYPE_STR, $value);
+                }
+            } else {
+                if (is_array($value)) {
+                    $this->query('psetex', $key, self::TYPE_OBJ, json_encode($value), $ttl);
+                } elseif (is_string($value)) {
+                    $this->query('psetex', $key, self::TYPE_STR, $value, $ttl);
+                } elseif (is_numeric($value)) {
+                    $this->query('psetex', $key, self::TYPE_NUM, (string)$value, $ttl);
+                } else {
+                    $this->query('psetex', $key, self::TYPE_STR, $value, $ttl);
+                }
+            }
+        }
+    }
+
+    /**
+     * 设定过期时长
+     * @param $key
      * @param int $timeout <= 0 not expire
      * @return void
      */
-    public function set($key, $value, int $timeout = 0)
+    public function expire($key, int $timeout = 0)
     {
-        if ($this->redis !== null && $key) {
-            if (is_array($value)) {
-                $this->query('set', $key, self::TYPE_OBJ, json_encode($value));
-            } elseif (is_string($value)) {
-                $this->query('set', $key, self::TYPE_STR, $value);
-            } elseif (is_numeric($value)) {
-                $this->query('set', $key, self::TYPE_NUM, (string)$value);
-            } else {
-                $this->query('set', $key, self::TYPE_STR, $value);
-            }
+        if ($this->redis !== null && $key && $timeout > 0) {
             if ($timeout > 0) {
                 $this->query('expire', $key, $timeout);
             }
@@ -66,7 +149,8 @@ class Redis extends AbstractRDO
     }
 
     /**
-     * @param $key
+     * 获取值，key可以是string或一个string的数组，返回多个值
+     * @param string|array[string] $key
      * @return bool|null|string|array
      */
     public function get($key)
@@ -74,21 +158,15 @@ class Redis extends AbstractRDO
         if ($this->redis === null || !$key) {
             return null;
         } else {
-            $result = $this->query('get', $key);
-            $type = $result[0];
-            $value = $result[1];
-            switch ($type) {
-                case self::TYPE_OBJ:
-                    $value = json_decode($value, true);
-                    break;
-                case self::TYPE_NUM:
-                    $value = round($value, 10);
-                    break;
-                case self::TYPE_STR:
-                default:
-                    break;
+            if (is_string($key)) {
+                $result = $this->query('get', $key);
+                $type = $result[0];
+                $value = $result[1];
+                return $this->factoryValue($type, $value);
             }
-            return $value;
+            else if (is_array($key)) {
+
+            }
         }
     }
 
