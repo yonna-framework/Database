@@ -163,9 +163,8 @@ class Redis extends AbstractRDO
                 $type = $result[0];
                 $value = $result[1];
                 return $this->factoryValue($type, $value);
-            }
-            else if (is_array($key)) {
-
+            } else if (is_array($key)) {
+                $result = $this->query('mget', $key);
             }
         }
     }
@@ -179,15 +178,14 @@ class Redis extends AbstractRDO
     public function hSet($table, $key, $value)
     {
         if ($this->redis !== null && $table && $key) {
-            $table = $this->parse($table);
             if (is_array($value)) {
-                $this->redis->hSet($table, self::TYPE_OBJ . $key, json_encode($value));
+                $this->query('hset', $table, $key, self::TYPE_OBJ, json_encode($value));
             } elseif (is_string($value)) {
-                $this->redis->hSet($table, self::TYPE_STR . $key, $value);
+                $this->query('hset', $table, $key, self::TYPE_STR, $value);
             } elseif (is_numeric($value)) {
-                $this->redis->hSet($table, self::TYPE_NUM . $key, $value);
+                $this->query('hset', $table, $key, self::TYPE_NUM, (string)$value);
             } else {
-                $this->redis->hSet($table, self::TYPE_STR . $key, $value);
+                $this->query('hset', $table, $key, self::TYPE_STR, $value);
             }
         }
     }

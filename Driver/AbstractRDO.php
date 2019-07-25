@@ -128,11 +128,30 @@ abstract class AbstractRDO extends AbstractDB
                 break;
             case 'get':
                 $key = $options[0];
-                $value = $this->redis->get($key);
-                $type = substr($value, 0, 1);
-                $value = substr($value, 1);
-                $result = [$type, $value];
+                $result = $this->redis->get($key);
                 $commandStr = "GET '{$key}'";
+                break;
+            case 'mget':
+                $key = $options[0];
+                switch ($this->db_type) {
+                    case Type::REDIS:
+                        $result = $this->redis->mget($key);
+                        break;
+                    case Type::REDIS_CO:
+                        $result = $this->redis->mGet($key);
+                        break;
+                }
+                $key = array_map(function ($k) {
+                    return "'{$k}'";
+                }, $key);
+                $commandStr = "MGET " . implode(' ', $key);
+                break;
+            case 'hset':
+                $key = $options[0];
+                $hashKey = $options[1];
+                $value = $options[2] . $options[3];
+                $this->redis->hSet($key, $hashKey, $value);
+                $commandStr = "HSET '{$key}' '$hashKey' '{$value}'";
                 break;
         }
         parent::query($commandStr);
