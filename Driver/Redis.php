@@ -64,6 +64,20 @@ class Redis extends AbstractRDO
         }
     }
 
+    /**
+     * 设定过期时长
+     * @param $key
+     * @param int $timeout <= 0 not expire
+     * @return void
+     */
+    public function expire($key, int $timeout = 0)
+    {
+        if ($this->redis !== null && $key && $timeout > 0) {
+            if ($timeout > 0) {
+                $this->query('expire', $key, $timeout);
+            }
+        }
+    }
 
     /**
      * 设置值，可设置过期时长
@@ -100,13 +114,37 @@ class Redis extends AbstractRDO
     }
 
     /**
+     * @param array $kv
+     * @param int $ttl
+     * @return void
+     */
+    public function mSet(array $kv, int $ttl = 0)
+    {
+        if ($this->redis !== null && $kv) {
+            $keys = [];
+            foreach ($kv as $k => $v) {
+                if (is_array($v)) {
+                    $keys[$k] = self::TYPE_OBJ . json_encode($v);
+                } elseif (is_string($v)) {
+                    $keys[$k] = self::TYPE_STR . $v;
+                } elseif (is_numeric($v)) {
+                    $keys[$k] = self::TYPE_NUM . (string)$v;
+                } else {
+                    $keys[$k] = self::TYPE_STR . $v;
+                }
+            }
+            $this->query('mset', $keys, $ttl);
+        }
+    }
+
+    /**
      * 设置值，可设置毫秒级别的过期时长
      * @param $key
      * @param $value
      * @param int $ttl <= 0 forever unit:milliseconds
      * @return void
      */
-    public function pset($key, $value, int $ttl = 0)
+    public function pSet($key, $value, int $ttl = 0)
     {
         if ($this->redis !== null && $key) {
             if ($ttl <= 0) {
@@ -134,42 +172,6 @@ class Redis extends AbstractRDO
     }
 
     /**
-     * 设定过期时长
-     * @param $key
-     * @param int $timeout <= 0 not expire
-     * @return void
-     */
-    public function expire($key, int $timeout = 0)
-    {
-        if ($this->redis !== null && $key && $timeout > 0) {
-            if ($timeout > 0) {
-                $this->query('expire', $key, $timeout);
-            }
-        }
-    }
-
-    /**
-     * 获取值，key可以是string或一个string的数组，返回多个值
-     * @param string|array[string] $key
-     * @return bool|null|string|array
-     */
-    public function get($key)
-    {
-        if ($this->redis === null || !$key) {
-            return null;
-        } else {
-            if (is_string($key)) {
-                $result = $this->query('get', $key);
-                $type = $result[0];
-                $value = $result[1];
-                return $this->factoryValue($type, $value);
-            } else if (is_array($key)) {
-                $result = $this->query('mget', $key);
-            }
-        }
-    }
-
-    /**
      * @param $table
      * @param $key
      * @param $value
@@ -187,6 +189,35 @@ class Redis extends AbstractRDO
             } else {
                 $this->query('hset', $table, $key, self::TYPE_STR, $value);
             }
+        }
+    }
+
+    /**
+     * 获取值，key可以是string或一个string的数组，返回多个值
+     * @param string|array[string] $key
+     * @return bool|null|string|array
+     */
+    public function get($key)
+    {
+        $result = null;
+        if ($this->redis === null || !$key) {
+            return $result;
+        } else {
+            if (is_string($key)) {
+                $res = $this->query('get', $key);
+                $type = substr($res, 0, 1);
+                $value = substr($res, 1);
+                $result = $this->factoryValue($type, $value);
+            } else if (is_array($key)) {
+                $res = $this->query('mget', $key);
+                $result = [];
+                foreach ($res as $k => $v) {
+                    $type = substr($v, 0, 1);
+                    $value = substr($v, 1);
+                    $result[$key[$k]] = $this->factoryValue($type, $value);
+                }
+            }
+            return $result;
         }
     }
 

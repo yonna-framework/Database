@@ -131,6 +131,25 @@ abstract class AbstractRDO extends AbstractDB
                 $result = $this->redis->get($key);
                 $commandStr = "GET '{$key}'";
                 break;
+            case 'mset':
+                $key = $options[0];
+                $ttl = $options[1];
+                switch ($this->db_type) {
+                    case Type::REDIS:
+                        $result = $this->redis->mset($key);
+                        break;
+                    case Type::REDIS_CO:
+                        $result = $this->redis->mSet($key);
+                        break;
+                }
+                foreach ($key as $k => $v) {
+                    if ($ttl > 0) {
+                        $this->query('expire', $k, $ttl);
+                    }
+                    $key[$k] = "'{$k}' '{$v}'";
+                }
+                $commandStr = "MSET " . implode(' ', $key);
+                break;
             case 'mget':
                 $key = $options[0];
                 switch ($this->db_type) {
