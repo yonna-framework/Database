@@ -189,7 +189,7 @@ class Redis extends AbstractRDO
             } else {
                 $this->query('hset', $table, $key, self::TYPE_STR, $value);
             }
-        } 
+        }
     }
 
     /**
