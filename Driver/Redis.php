@@ -172,22 +172,22 @@ class Redis extends AbstractRDO
     }
 
     /**
-     * @param $table
+     * @param $hashKey
      * @param $key
      * @param $value
      * @return void
      */
-    public function hSet($table, $key, $value)
+    public function hSet($hashKey, $key, $value)
     {
-        if ($this->redis !== null && $table && $key) {
+        if ($this->redis !== null && $hashKey && $key) {
             if (is_array($value)) {
-                $this->query('hset', $table, $key, self::TYPE_OBJ, json_encode($value));
+                $this->query('hset', $hashKey, $key, self::TYPE_OBJ, json_encode($value));
             } elseif (is_string($value)) {
-                $this->query('hset', $table, $key, self::TYPE_STR, $value);
+                $this->query('hset', $hashKey, $key, self::TYPE_STR, $value);
             } elseif (is_numeric($value)) {
-                $this->query('hset', $table, $key, self::TYPE_NUM, (string)$value);
+                $this->query('hset', $hashKey, $key, self::TYPE_NUM, (string)$value);
             } else {
-                $this->query('hset', $table, $key, self::TYPE_STR, $value);
+                $this->query('hset', $hashKey, $key, self::TYPE_STR, $value);
             }
         }
     }
@@ -222,32 +222,44 @@ class Redis extends AbstractRDO
     }
 
     /**
-     * @param $table
+     * 获取值，key可以是string或一个string的数组，返回多个值
+     * @param array[string] $key
+     * @return array
+     */
+    public function mGet(array $key)
+    {
+        $result = [];
+        if ($this->redis === null || !$key) {
+            return $result;
+        } else {
+            $res = $this->query('mget', $key);
+            $result = [];
+            foreach ($res as $k => $v) {
+                $type = substr($v, 0, 1);
+                $value = substr($v, 1);
+                $result[$key[$k]] = $this->factoryValue($type, $value);
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * @param $hashKey
      * @param $key
      * @return bool|null|string|array
      */
-    public function hGet($table, $key)
+    public function hGet($key, $hashKey)
     {
-        if ($this->redis === null || !$table || !$key) {
-            return null;
+        $result = null;
+        if ($this->redis === null || !$key || !$hashKey) {
+            return $result;
         } else {
-            $table = $this->parse($table);
-            $value = $this->redis->hGet($table, $key);
-            $type = substr($value, 0, 1);
-            $value = substr($value, 1);
-            switch ($type) {
-                case self::TYPE_OBJ:
-                    $value = json_decode($value, true);
-                    break;
-                case self::TYPE_NUM:
-                    $value = round($value, 10);
-                    break;
-                case self::TYPE_STR:
-                default:
-                    break;
-            }
-            return $value;
+            $res = $this->query('hget', $key, $hashKey);
+            $type = substr($res, 0, 1);
+            $value = substr($res, 1);
+            $result = $this->factoryValue($type, $value);
         }
+        return $result;
     }
 
     /**

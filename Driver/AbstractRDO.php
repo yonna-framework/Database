@@ -126,11 +126,6 @@ abstract class AbstractRDO extends AbstractDB
                 }
                 $commandStr = "PSETEX '{$key}' {$ttl} '{$value}'";
                 break;
-            case 'get':
-                $key = $options[0];
-                $result = $this->redis->get($key);
-                $commandStr = "GET '{$key}'";
-                break;
             case 'mset':
                 $key = $options[0];
                 $ttl = $options[1];
@@ -150,6 +145,18 @@ abstract class AbstractRDO extends AbstractDB
                 }
                 $commandStr = "MSET " . implode(' ', $key);
                 break;
+            case 'hset':
+                $key = $options[0];
+                $hashKey = $options[1];
+                $value = $options[2] . $options[3];
+                $this->redis->hSet($key, $hashKey, $value);
+                $commandStr = "HSET '{$key}' '$hashKey' '{$value}'";
+                break;
+            case 'get':
+                $key = $options[0];
+                $result = $this->redis->get($key);
+                $commandStr = "GET '{$key}'";
+                break;
             case 'mget':
                 $key = $options[0];
                 switch ($this->db_type) {
@@ -165,12 +172,12 @@ abstract class AbstractRDO extends AbstractDB
                 }, $key);
                 $commandStr = "MGET " . implode(' ', $key);
                 break;
-            case 'hset':
+            case 'hget':
                 $key = $options[0];
                 $hashKey = $options[1];
                 $value = $options[2] . $options[3];
-                $this->redis->hSet($key, $hashKey, $value);
-                $commandStr = "HSET '{$key}' '$hashKey' '{$value}'";
+                $this->redis->hGet($key, $hashKey);
+                $commandStr = "HGET '{$key}' '$hashKey'";
                 break;
         }
         parent::query($commandStr);
