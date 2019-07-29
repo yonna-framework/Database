@@ -74,13 +74,56 @@ abstract class AbstractRDO extends AbstractDB
         $result = null;
         $commandStr = "un know command";
         switch ($command) {
+            case 'time':
+                $result = $this->redis->time();
+                $commandStr = 'TIME';
+                break;
             case 'dbsize':
                 $result = $this->redis->dbSize();
                 $commandStr = 'DBSIZE';
                 break;
+            case 'bgrewriteaof':
+                $result = $this->redis->bgrewriteaof();
+                $commandStr = 'BGREWRITEAOF';
+                break;
+            case 'save':
+                $result = $this->redis->save();
+                $commandStr = 'SAVE';
+                break;
+            case 'bgsave':
+                switch ($this->db_type) {
+                    case Type::REDIS:
+                        $result = $this->redis->bgsave();
+                        break;
+                    case Type::REDIS_CO:
+                        $result = $this->redis->bgSave();
+                        break;
+                }
+                $commandStr = 'BGSAVE';
+                break;
+            case 'lastsave':
+                $result = $this->redis->lastSave();
+                $commandStr = 'LASTSAVE';
+                break;
             case 'flushall':
                 $this->redis->flushAll();
                 $commandStr = 'FLUSHALL';
+                break;
+            case 'flushdb':
+                $this->redis->flushDB();
+                $commandStr = 'FLUSHDB';
+                break;
+            case 'info':
+                $section = $options[0];
+                switch ($this->db_type) {
+                    case Type::REDIS:
+                        $result = $this->redis->info($section);
+                        break;
+                    case Type::REDIS_CO:
+                        $result = '';
+                        break;
+                }
+                $commandStr = "INFO '{$section}'";
                 break;
             case 'delete':
                 $key = $options[0];
@@ -126,6 +169,11 @@ abstract class AbstractRDO extends AbstractDB
                 }
                 $commandStr = "PSETEX '{$key}' {$ttl} '{$value}'";
                 break;
+            case 'get':
+                $key = $options[0];
+                $result = $this->redis->get($key);
+                $commandStr = "GET '{$key}'";
+                break;
             case 'mset':
                 $key = $options[0];
                 $ttl = $options[1];
@@ -145,18 +193,6 @@ abstract class AbstractRDO extends AbstractDB
                 }
                 $commandStr = "MSET " . implode(' ', $key);
                 break;
-            case 'hset':
-                $key = $options[0];
-                $hashKey = $options[1];
-                $value = $options[2] . $options[3];
-                $this->redis->hSet($key, $hashKey, $value);
-                $commandStr = "HSET '{$key}' '$hashKey' '{$value}'";
-                break;
-            case 'get':
-                $key = $options[0];
-                $result = $this->redis->get($key);
-                $commandStr = "GET '{$key}'";
-                break;
             case 'mget':
                 $key = $options[0];
                 switch ($this->db_type) {
@@ -172,12 +208,47 @@ abstract class AbstractRDO extends AbstractDB
                 }, $key);
                 $commandStr = "MGET " . implode(' ', $key);
                 break;
-            case 'hget':
+            case 'hset':
                 $key = $options[0];
                 $hashKey = $options[1];
                 $value = $options[2] . $options[3];
+                $this->redis->hSet($key, $hashKey, $value);
+                $commandStr = "HSET '{$key}' '$hashKey' '{$value}'";
+                break;
+            case 'hget':
+                $key = $options[0];
+                $hashKey = $options[1];
                 $this->redis->hGet($key, $hashKey);
                 $commandStr = "HGET '{$key}' '$hashKey'";
+                break;
+            case 'incr':
+                $key = $options[0];
+                $result = $this->redis->incr($key);
+                $commandStr = "INCR '{$key}'";
+                break;
+            case 'decr':
+                $key = $options[0];
+                $result = $this->redis->decr($key);
+                $commandStr = "DECR '{$key}'";
+                break;
+            case 'incrby':
+                $key = $options[0];
+                $value = $options[1];
+                $result = is_int($value) ? $this->redis->incrBy($key, $value) : $this->redis->incrByFloat($key, $value);
+                $commandStr = "INCRBY '{$key}' {$value}";
+                break;
+            case 'decrby':
+                $key = $options[0];
+                $value = $options[1];
+                $result = $this->redis->decrBy($key, $value);
+                $commandStr = "DECRBY '{$key}' {$value}";
+                break;
+            case 'hincrby':
+                $key = $options[0];
+                $hashKey = $options[1];
+                $value = $options[2];
+                $result = is_int($value) ? $this->redis->hIncrBy($key, $hashKey, $value) : $this->redis->hIncrByFloat($key, $hashKey, $value);
+                $commandStr = "HINCRBY '{$key}' {$value}";
                 break;
         }
         parent::query($commandStr);
