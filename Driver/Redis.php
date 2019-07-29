@@ -29,6 +29,20 @@ class Redis extends AbstractRDO
     }
 
     /**
+     * 选择一个数据库，索引从0开始,最大支持15
+     * @param int $index
+     * @return Redis
+     */
+    public function select(int $index)
+    {
+        if ($this->redis !== null && $index >= 0 && $index <= 15) {
+            $index = (int)$index;
+            $this->query('select', $index);
+        }
+        return $this;
+    }
+
+    /**
      * time
      * @return array
      */
@@ -55,6 +69,50 @@ class Redis extends AbstractRDO
     }
 
     /**
+     * 使用aof来进行数据库持久化
+     * @param bool $sure
+     */
+    public function bgRewriteAof($sure = false)
+    {
+        if ($this->redis !== null && $sure === true) {
+            $this->query('bgrewriteaof');
+        }
+    }
+
+    /**
+     * 将数据同步保存到磁盘
+     * @param bool $sure
+     */
+    public function save($sure = false)
+    {
+        if ($this->redis !== null && $sure === true) {
+            $this->query('save');
+        }
+    }
+
+    /**
+     * 将数据异步保存到磁盘
+     * @param bool $sure
+     */
+    public function bgSave($sure = false)
+    {
+        if ($this->redis !== null && $sure === true) {
+            $this->query('bgsave');
+        }
+    }
+
+    /**
+     * 返回上次成功将数据保存到磁盘的Unix时戳
+     * @param bool $sure
+     */
+    public function lastSave($sure = false)
+    {
+        if ($this->redis !== null && $sure === true) {
+            $this->query('lastsave');
+        }
+    }
+
+    /**
      * 清空所有
      * @param bool $sure
      */
@@ -77,6 +135,20 @@ class Redis extends AbstractRDO
     }
 
     /**
+     * info [section]------返回关于 Redis 服务器的各种信息和统计数值
+     * @param string $section
+     * @return mixed|null
+     */
+    public function info($section = 'default')
+    {
+        $result = null;
+        if ($this->redis !== null && $section) {
+            $result = $this->query('info', $section);
+        }
+        return $result;
+    }
+
+    /**
      * 删除kEY
      * @param $key
      */
@@ -85,6 +157,48 @@ class Redis extends AbstractRDO
         if ($this->redis !== null && $key) {
             $this->query('delete', $key);
         }
+    }
+
+    /**
+     * 以秒为单位,返回给定key的剩余生存时间(TTL, time to live)
+     * @param $key
+     * @return int
+     */
+    public function ttl($key): int
+    {
+        $ttl = -1;
+        if ($this->redis !== null && $key) {
+            $ttl = $this->query('ttl', $key);
+        }
+        return $ttl;
+    }
+
+    /**
+     * 以毫秒为单位,返回给定key的剩余生存时间(TTL, time to live)
+     * @param $key
+     * @return int
+     */
+    public function pttl($key): int
+    {
+        $ttl = -1;
+        if ($this->redis !== null && $key) {
+            $ttl = $this->query('pttl', $key);
+        }
+        return $ttl;
+    }
+
+    /**
+     * 检查给定key是否存在
+     * @param $key
+     * @return bool
+     */
+    public function exists(string $key): bool
+    {
+        $exist = false;
+        if ($this->redis !== null && $key) {
+            $exist = $this->query('exists', $key);
+        }
+        return $exist;
     }
 
     /**

@@ -74,6 +74,11 @@ abstract class AbstractRDO extends AbstractDB
         $result = null;
         $commandStr = "un know command";
         switch ($command) {
+            case 'select':
+                $index = $options[0];
+                $this->redis->select($index);
+                $commandStr = "SELECT {$index}";
+                break;
             case 'time':
                 $result = $this->redis->time();
                 $commandStr = 'TIME';
@@ -83,26 +88,26 @@ abstract class AbstractRDO extends AbstractDB
                 $commandStr = 'DBSIZE';
                 break;
             case 'bgrewriteaof':
-                $result = $this->redis->bgrewriteaof();
+                $this->redis->bgrewriteaof();
                 $commandStr = 'BGREWRITEAOF';
                 break;
             case 'save':
-                $result = $this->redis->save();
+                $this->redis->save();
                 $commandStr = 'SAVE';
                 break;
             case 'bgsave':
                 switch ($this->db_type) {
                     case Type::REDIS:
-                        $result = $this->redis->bgsave();
+                        $this->redis->bgsave();
                         break;
                     case Type::REDIS_CO:
-                        $result = $this->redis->bgSave();
+                        $this->redis->bgSave();
                         break;
                 }
                 $commandStr = 'BGSAVE';
                 break;
             case 'lastsave':
-                $result = $this->redis->lastSave();
+                $this->redis->lastSave();
                 $commandStr = 'LASTSAVE';
                 break;
             case 'flushall':
@@ -129,6 +134,21 @@ abstract class AbstractRDO extends AbstractDB
                 $key = $options[0];
                 $this->redis->delete($key);
                 $commandStr = "DELETE '{$key}'";
+                break;
+            case 'ttl':
+                $key = $options[0];
+                $result = $this->redis->ttl($key);
+                $commandStr = "TTL '{$key}'";
+                break;
+            case 'pttl':
+                $key = $options[0];
+                $result = $this->redis->pttl($key);
+                $commandStr = "PTTL '{$key}'";
+                break;
+            case 'exists':
+                $key = $options[0];
+                $result = $this->redis->exists($key) == 1 ? true : false;
+                $commandStr = "EXISTS '{$key}'";
                 break;
             case 'expire':
                 $key = $options[0];
