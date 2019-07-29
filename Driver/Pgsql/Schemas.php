@@ -4,10 +4,7 @@
  * version > 9.7
  */
 
-namespace Yonna\Database\Pgsql;
-
-use Exception;
-use Yonna\Mapping\DBType;
+namespace Yonna\Database\Driver\Pgsql;
 
 class Schemas
 {
@@ -57,7 +54,7 @@ class Schemas
             $this->options['table'] = $table;
             $this->options['table_origin'] = null;
         }
-        return Core::get(Table::class, $this->setting, $this->options);
+        return (new Table($this->setting, $this->options));
     }
 
 }

@@ -4,11 +4,11 @@
  * version > 9.7
  */
 
-namespace Yonna\Database\Pgsql;
+namespace Yonna\Database\Driver\Pgsql;
 
-use Exception;
-use Yonna\Database\AbstractPDO;
-use Yonna\Mapping\DBType;
+use Yonna\Database\Driver\AbstractPDO;
+use Yonna\Database\Driver\Type;
+use Yonna\Throwable\Exception;
 
 class Table extends AbstractPDO
 {
@@ -21,7 +21,7 @@ class Table extends AbstractPDO
     public function __construct(array $setting, array $options)
     {
         parent::__construct($setting);
-        $this->db_type = DBType::PGSQL;
+        $this->db_type = Type::PGSQL;
         $this->charset = $setting['charset'] ?: 'utf8';
         $this->selectSql = 'SELECT%DISTINCT% %FIELD% FROM %SCHEMAS%.%TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%LIMIT% %UNION%%LOCK%%COMMENT%';
         $this->options = $options;
@@ -822,7 +822,7 @@ class Table extends AbstractPDO
      * @access public
      * @param mixed $data 数据
      * @return integer
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     public function insert($data)
     {
@@ -862,7 +862,7 @@ class Table extends AbstractPDO
      * @access public
      * @param mixed $dataSet 数据集
      * @return false | integer
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     public function insertAll($dataSet)
     {
@@ -906,7 +906,7 @@ class Table extends AbstractPDO
      * @param mixed $data 数据
      * @param bool $sure
      * @return false | integer
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     public function update($data, $sure = false)
     {
@@ -956,7 +956,7 @@ class Table extends AbstractPDO
      * @access public
      * @param bool $sure
      * @return false | integer
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     public function delete($sure = false)
     {
@@ -987,7 +987,7 @@ class Table extends AbstractPDO
      * @alert 必须注意，这个方法一经执行会“清空”原来的“所有数据”及“自增量”
      * @param bool $sure 确认执行，防止误操作
      * @return self
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     public function truncate($sure = false)
     {

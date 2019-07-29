@@ -6,7 +6,7 @@
 
 namespace Yonna\Database\Driver;
 
-use Yonna\Database\Pgsql\Schemas;
+use Yonna\Database\Driver\Pgsql\Schemas;
 
 class Pgsql
 {

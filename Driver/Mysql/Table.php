@@ -6,9 +6,9 @@
 
 namespace Yonna\Database\Driver\Mysql;
 
-use Yonna\Throwable\Exception;
 use Yonna\Database\Driver\AbstractPDO;
 use Yonna\Database\Driver\Type;
+use Yonna\Throwable\Exception;
 
 class Table extends AbstractPDO
 {
@@ -779,6 +779,7 @@ class Table extends AbstractPDO
      * @access public
      * @param mixed $data 数据
      * @return integer
+     * @throws Exception\DatabaseException
      */
     public function insert($data)
     {
@@ -818,6 +819,7 @@ class Table extends AbstractPDO
      * @access public
      * @param mixed $dataSet 数据集
      * @return false | integer
+     * @throws Exception\DatabaseException
      */
     public function insertAll($dataSet)
     {
@@ -942,6 +944,7 @@ class Table extends AbstractPDO
      * @alert 必须注意，这个方法一经执行会“清空”原来的“所有数据”及“自增量”
      * @param bool $sure 确认执行，防止误操作
      * @return self
+     * @throws Exception\DatabaseException
      */
     public function truncate($sure = false)
     {
