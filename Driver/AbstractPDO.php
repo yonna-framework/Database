@@ -1073,7 +1073,7 @@ abstract class AbstractPDO extends AbstractDB
      * @param string $operat see self
      * @param string $field
      * @param null $value
-     * @return self | Mysql\Table | Pgsql\Table | Mssql\Table | Sqlite
+     * @return self | Mysql\Table | Pgsql\Table | Mssql\Table | Sqlite\Table
      */
     protected function whereOperat($operat, $field, $value = null)
     {
