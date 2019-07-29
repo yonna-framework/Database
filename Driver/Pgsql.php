@@ -6,9 +6,7 @@
 
 namespace Yonna\Database\Driver;
 
-use Exception;
 use Yonna\Database\Pgsql\Schemas;
-use Yonna\Mapping\DBType;
 
 class Pgsql
 {
@@ -38,7 +36,6 @@ class Pgsql
     }
 
 
-
     /**
      * 哪个模式
      *
@@ -48,7 +45,7 @@ class Pgsql
     public function schemas($schemas)
     {
         $this->options['schemas'] = $schemas;
-        return Core::get(Schemas::class, $this->setting, $this->options);
+        return (new Schemas($this->setting, $this->options));
     }
 
 }

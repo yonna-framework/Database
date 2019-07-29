@@ -3,6 +3,8 @@
 namespace Yonna\Database\Driver;
 
 
+use Closure;
+
 class Redis extends AbstractRDO
 {
 
@@ -31,15 +33,21 @@ class Redis extends AbstractRDO
     /**
      * 选择一个数据库，索引从0开始,最大支持15
      * @param int $index
-     * @return Redis
+     * @param Closure $tempCall
      */
-    public function select(int $index)
+    public function select(int $index, Closure $tempCall = null)
     {
         if ($this->redis !== null && $index >= 0 && $index <= 15) {
             $index = (int)$index;
-            $this->query('select', $index);
+            if ($tempCall !== null) {
+                $preIndex = $this->redis->getDBNum();
+                $this->query('select', $index);
+                $tempCall();
+                $this->query('select', $preIndex);
+            } else {
+                $this->query('select', $index);
+            }
         }
-        return $this;
     }
 
     /**
