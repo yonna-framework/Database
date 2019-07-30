@@ -2,7 +2,6 @@
 
 namespace Yonna\Database\Driver;
 
-use Yonna\Core;
 use Yonna\Database\Config;
 use Yonna\Throwable\Exception;
 
@@ -42,7 +41,8 @@ class Coupling
         if (empty($link['host']) || empty($link['port'])) Exception::params('Lack of host/port address');
         $u = md5(var_export($link, true));
         if (empty(static::$db[$u])) {
-            static::$db[$u] = Core::singleton("\\Yonna\\Database\\Driver\\{$link['type']}", $link);
+            $driver = "\\Yonna\\Database\\Driver\\{$link['type']}";
+            static::$db[$u] = new $driver($link);
         }
         return static::$db[$u];
     }
