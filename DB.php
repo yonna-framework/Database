@@ -6,7 +6,7 @@ namespace Yonna\Database;
 use PDOException;
 use Yonna\Database\Driver\Coupling;
 use Yonna\Database\Driver\Type;
-use Yonna\Database\Record\Record;
+use Yonna\Database\Support\Record;
 
 /**
  * Class DB

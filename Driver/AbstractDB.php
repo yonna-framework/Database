@@ -2,7 +2,7 @@
 
 namespace Yonna\Database\Driver;
 
-use Yonna\Database\Record\Record;
+use Yonna\Database\Support\Record;
 use Yonna\Throwable\Exception;
 
 abstract class AbstractDB

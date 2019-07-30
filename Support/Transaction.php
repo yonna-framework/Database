@@ -1,16 +1,16 @@
 <?php
 
 
-namespace Yonna\Database\Transaction;
+namespace Yonna\Database\Support;
 
 use PDOException;
 
 /**
  * 事务
  * Class Transaction
- * @package Yonna\Database\Transaction
+ * @package Yonna\Database\Support
  */
-class Transaction
+class Transaction extends Support
 {
 
 

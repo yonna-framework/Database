@@ -2,7 +2,6 @@
 
 namespace Yonna\Database\Driver;
 
-use Yonna\Foundation\Str;
 use Yonna\Throwable\Exception;
 use Redis as RedisDriver;
 use Swoole\Coroutine\Redis as RedisSwoole;
