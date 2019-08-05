@@ -21,6 +21,7 @@ class DB
      */
     public static function enableRecord($dbType = null)
     {
+        //@todo how can i change this
         Record::enableRecord($dbType);
     }
 
