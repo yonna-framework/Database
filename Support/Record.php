@@ -11,10 +11,9 @@ class Record extends Support
 {
 
     /**
-     * 记录的数据库类型
-     * @var array
+     * @var bool
      */
-    private $record_db_types = [];
+    private $enable = false;
 
     /**
      * 记录集
@@ -30,18 +29,26 @@ class Record extends Support
 
     /**
      * Record constructor.
-     * @param string | array $dbType
      */
-    public function __construct($dbType = null)
+    public function __construct()
     {
-        if ($dbType) {
-            if (is_string($dbType)) {
-                $this->record_db_types = [$dbType];
-            } else if (is_array($dbType)) {
-                $this->record_db_types = $dbType;
-            }
-        }
         $this->record_time = $this->time();
+    }
+
+    /**
+     * @return bool
+     */
+    private function isEnable(): bool
+    {
+        return $this->enable;
+    }
+
+    /**
+     * @param bool $enable
+     */
+    public function setEnable(bool $enable): void
+    {
+        $this->enable = $enable;
     }
 
     /**
@@ -59,33 +66,50 @@ class Record extends Support
      * @param string $connect
      * @param string $record
      */
-    public function addRecord(string $dbType, string $connect, string $record)
+    public function add(string $dbType, string $connect, string $record)
     {
-        if ($record) {
+        if ($this->isEnable() && $record) {
             $microNow = $this->time();
-            if (!$this->record_db_types || in_array($dbType, $this->record_db_types)) {
-                $this->records[] = [
-                    'type' => $dbType,
-                    'connect' => $connect,
-                    'query' => $record,
-                    'time' => round($microNow - $this->record_time, 4) . 'ms',
-                ];
-            }
+            $this->records[] = [
+                'type' => $dbType,
+                'connect' => $connect,
+                'query' => $record,
+                'time' => round($microNow - $this->record_time, 4) . 'ms',
+            ];
             $this->record_time = $microNow;
         }
     }
 
     /**
-     * 获取记录，获取后自动清空
-     * @return array
+     * 清空记录
      */
-    public function fetchRecords()
+    public function clear()
     {
-        $record = $this->records;
         $this->record_time = 0;
         $this->records = [];
-        return $record;
     }
 
+    /**
+     * 获取记录，获取瞬间会disabled记录标识
+     * @param $dbTypes
+     * @return array
+     */
+    public function fetch($dbTypes = null): array
+    {
+        $this->setEnable(false);
+        $record = [];
+        if (is_string($dbTypes)) {
+            $dbTypes = [$dbTypes];
+        }
+        if (!is_array($dbTypes)) {
+            $dbTypes = null;
+        }
+        foreach ($this->records as $v) {
+            if ($dbTypes === null || in_array($v['type'], $dbTypes)) {
+                $record[] = $v;
+            }
+        }
+        return $record;
+    }
 
 }

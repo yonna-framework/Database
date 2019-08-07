@@ -33,21 +33,27 @@ class DB
      */
     public function __construct()
     {
-        
+        $this->record = (new Record());
     }
 
     /**
      * 启用记录
+     */
+    public function startRecord()
+    {
+        $this->record->clear();
+        $this->record->setEnable(true);
+    }
+
+    /**
+     * 获取记录
      * @param string|array $dbType
-     * @return Record
+     * @return array
      * @see Type
      */
-    public function enableRecord($dbType = null)
+    public function fetchRecord($dbType = null)
     {
-        if (!$this->record === null) {
-            $this->record = (new Record($dbType));
-        }
-        return $this->record;
+        return $this->record->fetch($dbType);
     }
 
     /**
