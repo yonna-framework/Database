@@ -11,83 +11,46 @@ class Record extends Support
 {
 
     /**
-     * @var array
-     */
-    private static $is_record = [];
-
-    /**
      * 记录的数据库类型
      * @var array
      */
-    private static $record_db_types = [];
+    private $record_db_types = [];
 
     /**
      * 记录集
      * @var array
      */
-    private static $records = [];
+    private $records = [];
 
     /**
      * 时间基准
      * @var array
      */
-    private static $record_time = [];
-
-
-    /**
-     * @param null $val
-     * @return bool
-     */
-    private static function isRecord($val = null): bool
-    {
-        if (is_bool($val)) {
-            static::$is_record[self::uuid()] = $val;
-        }
-        return static::$is_record[self::uuid()] ?? false;
-    }
+    private $record_time = null;
 
     /**
-     * @param array $val
-     * @return array
+     * Record constructor.
+     * @param string | array $dbType
      */
-    private static function recordType($val = null): array
+    public function __construct($dbType = null)
     {
-        if ($val !== null) {
-            if (is_string($val)) {
-                static::$record_db_types[self::uuid()][] = $val;
-            } else if (is_array($val)) {
-                static::$record_db_types[self::uuid()] = $val;
+        if ($dbType) {
+            if (is_string($dbType)) {
+                $this->record_db_types = [$dbType];
+            } else if (is_array($dbType)) {
+                $this->record_db_types = $dbType;
             }
         }
-        return static::$record_db_types[self::uuid()] ?? [];
+        $this->record_time = $this->time();
     }
 
     /**
-     * @param float $val
-     * @return float
+     * get a new time
+     * @return float|int
      */
-    private static function recordTime(float $val = null): float
+    private function time()
     {
-        if ($val !== null) {
-            static::$record_time[self::uuid()] = $val;
-        }
-        return static::$record_time[self::uuid()] ?? 0;
-    }
-
-    /**
-     * @param array $val
-     * @return array
-     */
-    private static function records(array $val = null): array
-    {
-        if ($val !== null && is_array($val)) {
-            if (empty($val)) {
-                static::$records[self::uuid()] = [];
-            } else {
-                static::$records[self::uuid()][] = $val;
-            }
-        }
-        return static::$records[self::uuid()] ?? [];
+        return 1000 * microtime(true);
     }
 
     /**
@@ -96,47 +59,31 @@ class Record extends Support
      * @param string $connect
      * @param string $record
      */
-    public static function addRecord(string $dbType, string $connect, string $record)
+    public function addRecord(string $dbType, string $connect, string $record)
     {
-        if (static::isRecord() !== true) {
-            return;
-        }
         if ($record) {
-            $microNow = 1000 * microtime(true);
-            if (!static::recordType() || in_array($dbType, static::recordType())) {
-                static::records([
+            $microNow = $this->time();
+            if (!$this->record_db_types || in_array($dbType, $this->record_db_types)) {
+                $this->records[] = [
                     'type' => $dbType,
                     'connect' => $connect,
                     'query' => $record,
-                    'time' => round($microNow - static::recordTime(), 4) . 'ms',
-                ]);
+                    'time' => round($microNow - $this->record_time, 4) . 'ms',
+                ];
             }
-            static::recordTime($microNow);
+            $this->record_time = $microNow;
         }
-    }
-
-    /**
-     * 启用记录
-     * @param array | string $dbType
-     */
-    public static function enableRecord($dbType = null)
-    {
-        static::isRecord(true);
-        static::recordType([]);
-        static::recordType($dbType);
-        static::recordTime(1000 * microtime(true));
     }
 
     /**
      * 获取记录，获取后自动清空
      * @return array
      */
-    public static function getRecord()
+    public function fetchRecords()
     {
-        $record = static::records();
-        static::isRecord(false);
-        static::records([]);
-        static::recordTime(0);
+        $record = $this->records;
+        $this->record_time = 0;
+        $this->records = [];
         return $record;
     }
 

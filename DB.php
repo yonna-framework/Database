@@ -3,7 +3,6 @@
 
 namespace Yonna\Database;
 
-use PDOException;
 use Yonna\Database\Driver\Coupling;
 use Yonna\Database\Driver\Type;
 use Yonna\Database\Support\Record;
@@ -15,22 +14,40 @@ class DB
 {
 
     /**
-     * 启用记录
-     * @param string|array $dbType
-     * @see Type
+     * new one
+     * @return DB
      */
-    public static function enableRecord($dbType = null)
+    public static function new()
     {
-        //@todo how can i change this
-        Record::enableRecord($dbType);
+        return (new self());
     }
 
     /**
-     * 获取记录
+     * record object
+     * @var null
      */
-    public static function getRecord()
+    private $record = null;
+
+    /**
+     * DB constructor.
+     */
+    public function __construct()
     {
-        return Record::getRecord();
+        
+    }
+
+    /**
+     * 启用记录
+     * @param string|array $dbType
+     * @return Record
+     * @see Type
+     */
+    public function enableRecord($dbType = null)
+    {
+        if (!$this->record === null) {
+            $this->record = (new Record($dbType));
+        }
+        return $this->record;
     }
 
     /**
@@ -38,26 +55,7 @@ class DB
      */
     public function beginTrans()
     {
-        if ($this->transTrace <= 0) {
-            if ($this->pdo()->inTransaction()) {
-                $this->pdo()->commit();
-            }
-            $this->transTrace = 1;
-        } else {
-            $this->transTrace++;
-            return true;
-        }
-        try {
-            return $this->pdo()->beginTransaction();
-        } catch (PDOException $e) {
-            // 服务端断开时重连一次
-            if ($e->errorInfo[1] == 2006 || $e->errorInfo[1] == 2013) {
-                $this->pdoClose();
-                return $this->pdo()->beginTransaction();
-            } else {
-                throw $e;
-            }
-        }
+        $this->
     }
 
     /**
