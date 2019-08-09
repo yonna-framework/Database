@@ -5,8 +5,21 @@ namespace Yonna\Database\Driver;
 use Yonna\Database\Config;
 use Yonna\Throwable\Exception;
 
-class Coupling
+class Pooling
 {
+
+    const MIN = 1;
+    const MAX = 10;
+
+    private static $pool = [
+        Type::MYSQL => [],
+        Type::PGSQL => [],
+        Type::MSSQL => [],
+        Type::SQLITE => [],
+        Type::MONGO => [],
+        Type::REDIS => [],
+        Type::REDIS_CO => [],
+    ];
 
     private static $config = null;
     private static $db = array();
@@ -15,10 +28,11 @@ class Coupling
     /**
      * 连接数据库
      * @param string | array $conf
-     * @param null $mustDbType db type check
+     * @param array $support
      * @return Mysql|Pgsql|Mssql|Sqlite|Mongo|Redis
+     * @throws null
      */
-    public static function connect($conf = 'default', $mustDbType = null): object
+    public static function connect($conf = 'default', ... $support): object
     {
         if (static::$config === null) {
             static::$config = Config::fetch();
@@ -36,11 +50,21 @@ class Coupling
                 $link[$ck] = $cv ?? null;
             }
         }
-        if (empty($link['type'])) Exception::params('Lack type of database');
-        if ($mustDbType && $mustDbType !== $link['type']) Exception::params('src type check no pass');
-        if (empty($link['host']) || empty($link['port'])) Exception::params('Lack of host/port address');
+
+        if (empty($link['type'])) {
+            Exception::params('Lack type of database');
+        }
+        if (empty($link['host']) || empty($link['port'])) {
+            Exception::params('Lack of host/port address');
+        }
+        if (!in_array($link['type'], Type::array())) {
+            Exception::params('Error type for database');
+        }
+
         $u = md5(var_export($link, true));
         if (empty(static::$db[$u])) {
+            $link['transaction'] = $support[0];
+            $link['record'] = $support[1];
             $driver = "\\Yonna\\Database\\Driver\\{$link['type']}";
             static::$db[$u] = new $driver($link);
         }

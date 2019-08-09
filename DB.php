@@ -3,15 +3,28 @@
 
 namespace Yonna\Database;
 
-use Yonna\Database\Driver\Coupling;
+use Yonna\Database\Driver\Pooling;
 use Yonna\Database\Driver\Type;
 use Yonna\Database\Support\Record;
+use Yonna\Database\Support\Transaction;
 
 /**
  * Class DB
  */
 class DB
 {
+
+    /**
+     * transaction object
+     * @var Transaction
+     */
+    private $transaction = null;
+
+    /**
+     * record object
+     * @var Record
+     */
+    private $record = null;
 
     /**
      * new one
@@ -23,21 +36,19 @@ class DB
     }
 
     /**
-     * record object
-     * @var null
-     */
-    private $record = null;
-
-    /**
      * DB constructor.
+     * the transaction is auto open,it will push driver into the stack
      */
     public function __construct()
     {
+        $this->transaction = (new Transaction());
         $this->record = (new Record());
     }
 
+    // database record
+
     /**
-     * 启用记录
+     * enable record feature
      */
     public function startRecord()
     {
@@ -56,129 +67,126 @@ class DB
         return $this->record->fetch($dbType);
     }
 
+    // transaction
+
     /**
-     * 开始事务
+     * trans start
      */
     public function beginTrans()
     {
-        $this->
+        $this->transaction->begin();
     }
 
     /**
-     * 提交事务
+     * trans commit
      */
     public function commitTrans()
     {
-        $this->transTrace > 0 && $this->transTrace--;
-        if ($this->transTrace > 0) {
-            return true;
-        }
-        return $this->pdo()->commit();
+        $this->transaction->commit();
     }
 
     /**
-     * 事务回滚
+     * trans rollback
      */
     public function rollBackTrans()
     {
-        $this->transTrace > 0 && $this->transTrace--;
-        if ($this->transTrace > 0) {
-            return true;
-        }
-        if ($this->pdo()->inTransaction()) {
-            return $this->pdo()->rollBack();
-        }
-        return false;
+        $this->transaction->rollback();
     }
 
     /**
      * 检测是否在一个事务内
      * @return bool
      */
-    public function inTransaction()
+    public function inTrans(): bool
     {
-        return $this->pdo()->inTransaction();
+        return $this->transaction->in();
     }
+
+    // connector
 
     /**
      * @param string $conf
      * @return object|\Yonna\Database\Driver\Mongo|\Yonna\Database\Driver\Mssql|\Yonna\Database\Driver\Mysql|\Yonna\Database\Driver\Pgsql|\Yonna\Database\Driver\Redis|\Yonna\Database\Driver\Sqlite
      */
-    public static function connect($conf = 'default')
+    public function connect($conf = 'default')
     {
-        return Coupling::connect($conf);
+        return Pooling::connect(
+            $conf,
+            $this->transaction,
+            $this->record
+        );
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Mysql
      */
-    public static function mysql($conf = 'mysql')
+    public function mysql($conf = 'mysql')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::MYSQL;
         }
-        return Coupling::connect($conf, Type::MYSQL);
+        return $this->connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Pgsql
      */
-    public static function pgsql($conf = 'pgsql')
+    public function pgsql($conf = 'pgsql')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::PGSQL;
         }
-        return Coupling::connect($conf, Type::PGSQL);
+        return $this->connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Mssql
      */
-    public static function mssql($conf = 'mssql')
+    public function mssql($conf = 'mssql')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::MSSQL;
         }
-        return Coupling::connect($conf, Type::MSSQL);
+        return $this->connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Sqlite
      */
-    public static function sqlite($conf = 'sqlite')
+    public function sqlite($conf = 'sqlite')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::SQLITE;
         }
-        return Coupling::connect($conf, Type::SQLITE);
+        return $this->connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Mongo
      */
-    public static function mongo($conf = 'mongo')
+    public function mongo($conf = 'mongo')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::MONGO;
         }
-        return Coupling::connect($conf, Type::MONGO);
+        return $this->connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Redis
      */
-    public static function redis($conf = 'redis')
+    public function redis($conf = 'redis')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::REDIS;
         }
-        return Coupling::connect($conf, Type::REDIS);
+        return $this->connect($conf);
     }
 
 }

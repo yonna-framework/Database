@@ -1,15 +1,16 @@
 <?php
 
-
 namespace Yonna\Database\Support;
 
-use PDOException;
 
 /**
  * 事务
  * Class Transaction
  * @package Yonna\Database\Support
  */
+
+require(__DIR__ . '/TransactionStruct.php');
+
 class Transaction extends Support
 {
 
@@ -23,7 +24,7 @@ class Transaction extends Support
     /**
      * 开始事务
      */
-    public function beginTrans()
+    public function begin()
     {
         if ($this->transTrace <= 0) {
             if ($this->pdo()->inTransaction()) {
@@ -50,7 +51,7 @@ class Transaction extends Support
     /**
      * 提交事务
      */
-    public function commitTrans()
+    public function commit()
     {
         $this->transTrace > 0 && $this->transTrace--;
         if ($this->transTrace > 0) {
@@ -62,7 +63,7 @@ class Transaction extends Support
     /**
      * 事务回滚
      */
-    public function rollBackTrans()
+    public function rollback()
     {
         $this->transTrace > 0 && $this->transTrace--;
         if ($this->transTrace > 0) {
@@ -78,9 +79,9 @@ class Transaction extends Support
      * 检测是否在一个事务内
      * @return bool
      */
-    public function inTransaction()
+    public function in()
     {
-        return $this->pdo()->inTransaction();
+        return $this->transTrace > 0;
     }
 
 }

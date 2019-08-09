@@ -3,6 +3,7 @@
 namespace Yonna\Database\Driver;
 
 use Yonna\Database\Support\Record;
+use Yonna\Database\Support\Transaction;
 use Yonna\Throwable\Exception;
 
 abstract class AbstractDB
@@ -45,8 +46,6 @@ abstract class AbstractDB
     protected $where = array();
 
 
-
-
     /**
      * 错误信息
      * @var string
@@ -61,6 +60,13 @@ abstract class AbstractDB
     private $dsn = null;
 
     /**
+     * 是否不执行命令直接返回命令串
+     *
+     * @var string
+     */
+    protected $fetchQuery = false;
+
+    /**
      * 加密对象
      * @var Crypto
      */
@@ -73,11 +79,16 @@ abstract class AbstractDB
     private $use_crypto = false;
 
     /**
-     * 是否不执行命令直接返回命令串
-     *
-     * @var string
+     * 事务对象
+     * @var Transaction
      */
-    protected $fetchQuery = false;
+    protected $Transaction = null;
+
+    /**
+     * 记录对象
+     * @var Record
+     */
+    protected $Record = null;
 
     /**
      * 构造方法
@@ -100,8 +111,10 @@ abstract class AbstractDB
         $this->crypto_secret = $setting['crypto_secret'] ?? null;
         $this->crypto_iv = $setting['crypto_iv'] ?? null;
         //
-        $this->Crypto = new Crypto($this->crypto_type, $this->crypto_secret, $this->crypto_iv);
         $this->fetchQuery = false;
+        $this->Crypto = new Crypto($this->crypto_type, $this->crypto_secret, $this->crypto_iv);
+        $this->Transaction = $setting['transaction'] ?? null;
+        $this->Record = $setting['record'] ?? null;
         return $this;
     }
 
@@ -123,7 +136,6 @@ abstract class AbstractDB
         $this->error = null;
         $this->where = array();
     }
-
 
     /**
      * 获取 DSN
@@ -218,7 +230,7 @@ abstract class AbstractDB
      */
     protected function query(string $query)
     {
-        Record::addRecord($this->db_type, $this->dsn(), $query);
+        $this->Record->add($this->db_type, $this->dsn(), $query);
     }
 
     /**
