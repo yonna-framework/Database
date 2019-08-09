@@ -9,7 +9,7 @@ class Coupling
 {
 
     private static $config = null;
-    private static $couplier = [];
+    private static $coupler = [];
     private static $transTrace = [];
 
     /**
@@ -49,13 +49,13 @@ class Coupling
         }
 
         $u = crc32(serialize($link));
-        if (!isset(static::$couplier[$u])) {
+        if (!isset(static::$coupler[$u])) {
             $link['transaction'] = $support[0];
             $link['record'] = $support[1];
             $driver = "\\Yonna\\Database\\Driver\\{$link['type']}";
-            static::$couplier[$u] = new $driver($link);
+            static::$coupler[$u] = new $driver($link);
         }
-        return static::$couplier[$u];
+        return static::$coupler[$u];
     }
 
 }
