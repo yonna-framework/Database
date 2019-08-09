@@ -182,7 +182,6 @@ abstract class AbstractDB
         return $this->dsn;
     }
 
-
     /**
      * 数据库错误信息
      * @param $err

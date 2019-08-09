@@ -16,6 +16,26 @@ class Pooling
 
     private static $pool = [];
 
+
+    /**
+     * 析构方法
+     * @access public
+     */
+    public function __destruct()
+    {
+        self::destruct();
+    }
+
+    /**
+     * destruct
+     */
+    public static function destruct()
+    {
+        if (!empty(self::$pool)) {
+            
+        }
+    }
+
     /**
      * free
      * @param string $poolIndex
@@ -27,20 +47,6 @@ class Pooling
         $i = $poolIndex[1];
         if (isset(self::$pool[$u]) && isset(self::$pool[$u][$i])) {
             self::$pool[$u][$i]['used'] -= 1;
-        }
-    }
-
-    /**
-     * destroy
-     * @param string $poolIndex
-     */
-    public static function destroy(string $poolIndex)
-    {
-        $poolIndex = explode(self::SEP, $poolIndex);
-        $u = $poolIndex[0];
-        $i = $poolIndex[1];
-        if (isset(self::$pool[$u])) {
-            array_splice(self::$pool[$u], $i, 1);
         }
     }
 
