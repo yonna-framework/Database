@@ -13,13 +13,6 @@ abstract class AbstractPDO extends AbstractDB
 {
 
     /**
-     * pdo 实例
-     *
-     * @var PDO
-     */
-    protected $pdo;
-
-    /**
      * pdo sQuery
      *
      * @var PDOStatement
@@ -128,8 +121,8 @@ abstract class AbstractPDO extends AbstractDB
     {
         $error = $this->getError();
         if (!$error) {
-            if ($this->pdo) {
-                $errorInfo = $this->pdo->errorInfo();
+            if ($this->pdo()) {
+                $errorInfo = $this->pdo()->errorInfo();
                 $error = $errorInfo[1] . ':' . $errorInfo[2];
             }
         }

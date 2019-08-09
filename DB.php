@@ -3,7 +3,7 @@
 
 namespace Yonna\Database;
 
-use Yonna\Database\Driver\Pooling;
+use Yonna\Database\Driver\Coupling;
 use Yonna\Database\Driver\Type;
 use Yonna\Database\Support\Record;
 use Yonna\Database\Support\Transaction;
@@ -110,7 +110,7 @@ class DB
      */
     public function connect($conf = 'default')
     {
-        return Pooling::connect(
+        return Coupling::connect(
             $conf,
             $this->transaction,
             $this->record

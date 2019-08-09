@@ -5,7 +5,9 @@
 
 namespace Yonna\Database\Driver;
 
-class Type
+use Yonna\Mapping\Mapping;
+
+class Type extends Mapping
 {
 
     const MYSQL = 'Mysql';
