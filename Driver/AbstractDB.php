@@ -140,7 +140,7 @@ abstract class AbstractDB
     /**
      * 获取 DSN
      * @return string
-     * @throws Exception\DatabaseException
+     * @throws null
      */
     protected function dsn()
     {

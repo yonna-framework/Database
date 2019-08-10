@@ -96,7 +96,6 @@ abstract class AbstractPDO extends AbstractDB
     public function __destruct()
     {
         $this->pdoFree();
-        $this->pdoClose();
         parent::__destruct();
     }
 
@@ -150,54 +149,11 @@ abstract class AbstractPDO extends AbstractDB
      */
     protected function pdo()
     {
-        if (!$this->pdo) {
-            try {
-                switch ($this->db_type) {
-                    case Type::MYSQL:
-                        $this->pdo = new PDO($this->dsn(), $this->account, $this->password,
-                            array(
-                                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $this->charset,
-                                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                                PDO::ATTR_STRINGIFY_FETCHES => false,
-                                PDO::ATTR_EMULATE_PREPARES => false,
-                            )
-                        );
-                        break;
-                    case Type::PGSQL:
-                        $this->pdo = new PDO($this->dsn(), $this->account, $this->password,
-                            array(
-                                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                                PDO::ATTR_STRINGIFY_FETCHES => false,
-                                PDO::ATTR_EMULATE_PREPARES => false,
-                            )
-                        );
-                        break;
-                    case Type::MSSQL:
-                        $this->pdo = new PDO($this->dsn(), $this->account, $this->password,
-                            array(
-                                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                            )
-                        );
-                        break;
-                    case Type::SQLITE:
-                        $this->pdo = new PDO($this->dsn(), null, null,
-                            array(
-                                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                                PDO::ATTR_STRINGIFY_FETCHES => false,
-                                PDO::ATTR_EMULATE_PREPARES => false,
-                            )
-                        );
-                        break;
-                    default:
-                        Exception::database("{$this->db_type} not support PDO yet");
-                        break;
-                }
-            } catch (PDOException $e) {
-                Exception::throw($e->getMessage());
-                exit;
-            }
-        }
-        return $this->pdo;
+        return Pooling::malloc($this->dsn(), $this->db_type, [
+            'account' => $this->account,
+            'password' => $this->password,
+            'charset' => $this->charset,
+        ]);
     }
 
     /**
@@ -208,14 +164,6 @@ abstract class AbstractPDO extends AbstractDB
         if (!empty($this->PDOStatement)) {
             $this->PDOStatement = null;
         }
-    }
-
-    /**
-     * 关闭 PDO连接
-     */
-    protected function pdoClose()
-    {
-        $this->pdo = null;
     }
 
     /**

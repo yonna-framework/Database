@@ -3,8 +3,8 @@
 namespace Yonna\Database\Driver;
 
 use Yonna\Throwable\Exception;
-use Redis as RedisDriver;
-use Swoole\Coroutine\Redis as RedisSwoole;
+use Redis;
+use Swoole\Coroutine\Redis as SwRedis;
 
 abstract class AbstractRDO extends AbstractDB
 {
@@ -17,7 +17,7 @@ abstract class AbstractRDO extends AbstractDB
     const TYPE_NUM = 'n';
 
     /**
-     * @var RedisDriver | RedisSwoole | null
+     * @var Redis | SwRedis | null
      *
      */
     protected $redis = null;
@@ -26,30 +26,16 @@ abstract class AbstractRDO extends AbstractDB
      * 架构函数 取得模板对象实例
      * @access public
      * @param array $setting
-     * @param RedisSwoole | null $RedisDriver
      * @throws Exception\DatabaseException
      */
-    public function __construct(array $setting, $RedisDriver = null)
+    public function __construct(array $setting)
     {
         parent::__construct($setting);
-        if ($RedisDriver == null) {
-            if (class_exists('\\Redis')) {
-                try {
-                    $RedisDriver = new RedisDriver();
-                } catch (\Exception $e) {
-                    $this->redis = null;
-                    Exception::database('Redis遇到问题或未安装，请暂时停用Redis以减少阻塞卡顿');
-                }
-            }
-        }
-        $this->redis = $RedisDriver;
-        $this->redis->connect(
-            $this->host,
-            $this->port
-        );
-        if ($this->password) {
-            $this->redis->auth($this->password);
-        }
+        $this->redis = Pooling::malloc($this->dsn(), $this->db_type, [
+            'host' => $this->host,
+            'port' => $this->port,
+            'password' => $this->password,
+        ]);
         return $this;
     }
 

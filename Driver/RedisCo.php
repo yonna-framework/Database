@@ -17,15 +17,7 @@ class RedisCo extends Redis
      */
     public function __construct(array $setting)
     {
-        $RedisDriver = null;
-        if (class_exists('\Swoole\Coroutine\Redis')) {
-            try {
-                $RedisDriver = new \Swoole\Coroutine\Redis();
-            } catch (\Exception $e) {
-                Exception::database('RedisSwoole遇到问题或未安装，请该用原生Redis拓展或停用Redis以减少阻塞卡顿');
-            }
-        }
-        parent::__construct($setting, $RedisDriver);
+        parent::__construct($setting);
         return $this;
     }
 
