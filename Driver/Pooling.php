@@ -13,8 +13,8 @@ class Pooling
 {
 
     private const MAX = 10;
-    private const SEP = '#####';
 
+    private static $mallocIndex = [];
     private static $pool = [];
 
     /**
@@ -126,46 +126,61 @@ class Pooling
     /**
      * pick a useless instance for database driver
      * @param string $poolingKey
-     * @return PDO | Redis | SwRedis
+     * @param int $i
+     * @return array
      */
-    private static function pick(string $poolingKey): object
+    private static function pick(string $poolingKey, int $i = -9235): array
     {
         if (empty(self::$pool)) {
-            return null;
+            return [null, -9235];
         }
         if (empty(self::$pool[$poolingKey])) {
-            return null;
+            return [null, -9235];
         }
         // start finding
-        $i = 0;
-        $poolingKeyCalled = 0;
-        $instance = null;
-        foreach (self::$pool[$poolingKey] as $k => $pool) {
-            if ($instance === null || $pool['called'] < $poolingKeyCalled) {
-                $instance = $pool['instance'];
-                $poolingKeyCalled = $pool['called'];
-                $i = $k;
+        if ($i === -9235) {
+            $i = 0;
+            $poolingKeyCalled = 0;
+            $instance = null;
+            foreach (self::$pool[$poolingKey] as $k => $pool) {
+                if ($instance === null || $pool['called'] < $poolingKeyCalled) {
+                    $poolingKeyCalled = $pool['called'];
+                    $i = $k;
+                }
             }
         }
+        $instance = static::$pool[$poolingKey][$i]['instance'];
         static::$pool[$poolingKey][$i]['called'] += 1;
+        return [$instance, $i];
     }
 
     /**
      * malloc
-     * @param string $dsn
-     * @param string $dbType
      * @param array $params
      * @return mixed
      * @throws null
      */
-    public static function malloc(string $dsn, string $dbType, array $params = [])
+    public static function malloc(array $params = [])
     {
+        $uuid = $params['uuid'];
+        $dsn = $params['dsn'];
+        $dbType = $params['db_type'];
+
+        $poolingKey = self::poolingKey($dsn, $dbType, $params);
+
+        if (isset(static::$mallocIndex[$uuid])) {
+            $picker = self::pick($poolingKey, static::$mallocIndex[$uuid]);
+            if (!empty($picker[0])) {
+                return $picker[0];
+            }
+            unset(static::$mallocIndex[$uuid]);
+        }
+
         if (!isset(static::$pool[$dsn])) {
             static::$pool[$dsn] = [];
         }
 
         // new instance return the newest one
-        $poolingKey = self::poolingKey($dsn, $dbType, $params);
         $count = count(static::$pool[$poolingKey]);
         if ($count < self::MAX) {
             $instance = null;
@@ -249,9 +264,13 @@ class Pooling
                 exit;
             }
             self::push($poolingKey, $count, $dbType, $instance);
+            $index = $count;
         } else {
-            $instance = self::pick($poolingKey);
+            $picker = self::pick($poolingKey);
+            $instance = $picker[0];
+            $index = $picker[1];
         }
+        static::$mallocIndex[$uuid] = $index;
         return $instance;
     }
 
