@@ -9,12 +9,10 @@ use Swoole\Coroutine\Redis as SwRedis;
 use Throwable;
 use Yonna\Throwable\Exception;
 
-class Pooling
+class Malloc
 {
 
-    private const MAX = 10;
-
-    private static $pool = [];
+    private static $malloc = [];
 
     /**
      * create a unique key for pool
@@ -23,7 +21,7 @@ class Pooling
      * @param array $params
      * @return string
      */
-    private static function poolingKey(string $dsn, string $dbType, array $params = []): string
+    private static function key(string $dsn, string $dbType, array $params = []): string
     {
         $key = $dsn . $dbType;
         if ($params) {
@@ -36,120 +34,6 @@ class Pooling
     }
 
     /**
-     * 析构方法
-     * @access public
-     */
-    public function __destruct()
-    {
-        self::destruct();
-    }
-
-    /**
-     * destruct
-     */
-    public static function destruct()
-    {
-        if (!empty(self::$pool)) {
-            foreach (self::$pool as $poolingKey => $obj) {
-                foreach ($obj as $index => $item) {
-                    var_dump($poolingKey);
-                    var_dump($index);
-                    self::pop($poolingKey, $index);
-                }
-            }
-        }
-    }
-
-
-    /**
-     * push into stack
-     * @param string $poolingKey
-     * @param int $index
-     * @param $db_type
-     * @param $instance
-     * @return mixed
-     */
-    private static function push(string $poolingKey, int $index, $db_type, $instance)
-    {
-        static::$pool[$poolingKey][$index] = [
-            'db_type' => $db_type,
-            'instance' => $instance,
-            'called' => 1,
-        ];
-        return $instance;
-    }
-
-    /**
-     * pop from stack
-     * @param string $poolingKey
-     * @param int $index
-     */
-    private static function pop(string $poolingKey, int $index)
-    {
-        if (!isset(static::$pool[$poolingKey])) {
-            return;
-        }
-        if (!isset(static::$pool[$poolingKey][$index])) {
-            return;
-        }
-        $item = static::$pool[$poolingKey][$index];
-        $instance = &$item['instance'];
-        switch ($item['db_type']) {
-            case Type::MYSQL:
-            case Type::PGSQL:
-            case Type::MSSQL:
-            case Type::SQLITE:
-                /**
-                 * @var $instance PDO
-                 */
-                $instance = null;
-                break;
-            case Type::MONGO:
-                break;
-            case Type::REDIS:
-                /**
-                 * @var $instance Redis
-                 */
-                $instance->close();
-                break;
-            case Type::REDIS_CO:
-                /**
-                 * @var $instance SwRedis
-                 */
-                $instance->close();
-                break;
-        }
-        array_splice(static::$pool[$poolingKey], $index, 1);
-    }
-
-    /**
-     * pick a useless instance for database driver
-     * @param string $poolingKey
-     * @return PDO | Redis | SwRedis
-     */
-    private static function pick(string $poolingKey): object
-    {
-        if (empty(self::$pool)) {
-            return null;
-        }
-        if (empty(self::$pool[$poolingKey])) {
-            return null;
-        }
-        // start finding
-        $i = 0;
-        $poolingKeyCalled = 0;
-        $instance = null;
-        foreach (self::$pool[$poolingKey] as $k => $pool) {
-            if ($instance === null || $pool['called'] < $poolingKeyCalled) {
-                $instance = $pool['instance'];
-                $poolingKeyCalled = $pool['called'];
-                $i = $k;
-            }
-        }
-        static::$pool[$poolingKey][$i]['called'] += 1;
-    }
-
-    /**
      * malloc
      * @param string $dsn
      * @param string $dbType
@@ -157,17 +41,15 @@ class Pooling
      * @return mixed
      * @throws null
      */
-    public static function malloc(string $dsn, string $dbType, array $params = [])
+    public static function allocation(string $dsn, string $dbType, array $params = [])
     {
-        if (!isset(static::$pool[$dsn])) {
-            static::$pool[$dsn] = [];
-        }
 
-        // new instance return the newest one
-        $poolingKey = self::poolingKey($dsn, $dbType, $params);
-        $count = count(static::$pool[$poolingKey]);
-        if ($count < self::MAX) {
-            $instance = null;
+        $key = self::key($dsn, $dbType, $params);
+        $instance = null;
+
+        if (!empty(static::$malloc[$key])) {
+            $instance = static::$malloc[$key];
+        } else {
             try {
                 switch ($dbType) {
                     case Type::MYSQL:
@@ -245,11 +127,7 @@ class Pooling
                 }
             } catch (Throwable $e) {
                 Exception::throw($e->getMessage());
-                exit;
             }
-            self::push($poolingKey, $count, $dbType, $instance);
-        } else {
-            $instance = self::pick($poolingKey);
         }
         return $instance;
     }
