@@ -15,6 +15,12 @@ abstract class AbstractDB
     const ASC = 'asc';
 
     /**
+     * uuid
+     * @var null
+     */
+    protected $UUID = null;
+
+    /**
      * 数据库驱动类型
      * @var null
      */
@@ -113,6 +119,7 @@ abstract class AbstractDB
         //
         $this->fetchQuery = false;
         $this->Crypto = new Crypto($this->crypto_type, $this->crypto_secret, $this->crypto_iv);
+        $this->UUID = $setting['uuid'] ?? null;
         $this->Transaction = $setting['transaction'] ?? null;
         $this->Record = $setting['record'] ?? null;
         return $this;
@@ -180,6 +187,24 @@ abstract class AbstractDB
             }
         }
         return $this->dsn;
+    }
+
+    /**
+     * 寻连接池
+     * @return mixed
+     */
+    protected function pooling()
+    {
+        return Pooling::malloc([
+            'uuid' => $this->UUID,
+            'dsn' => $this->dsn(),
+            'db_type' => $this->db_type,
+            'host' => $this->host,
+            'port' => $this->port,
+            'account' => $this->account,
+            'password' => $this->password,
+            'charset' => $this->charset,
+        ]);
     }
 
     /**

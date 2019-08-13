@@ -50,8 +50,9 @@ class Coupling
 
         $u = crc32(serialize($link));
         if (!isset(static::$coupler[$u])) {
-            $link['transaction'] = $support[0];
-            $link['record'] = $support[1];
+            $link['uuid'] = $support[0];
+            $link['transaction'] = $support[1];
+            $link['record'] = $support[2];
             $driver = "\\Yonna\\Database\\Driver\\{$link['type']}";
             static::$coupler[$u] = new $driver($link);
         }

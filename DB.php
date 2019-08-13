@@ -15,6 +15,12 @@ class DB
 {
 
     /**
+     * uuid
+     * @var null
+     */
+    private $uuid = null;
+
+    /**
      * transaction object
      * @var Transaction
      */
@@ -41,8 +47,19 @@ class DB
      */
     public function __construct()
     {
+        $this->uuid = sha1(microtime() . $_SERVER['HTTP_USER_AGENT']);
         $this->transaction = (new Transaction());
         $this->record = (new Record());
+    }
+
+    // uuid
+
+    /**
+     * uuid
+     */
+    public static function uuid()
+    {
+        return $_ENV['UUID'] ?? $_SERVER['HTTP_USER_AGENT'] ?? 0;
     }
 
     // database record
@@ -112,6 +129,7 @@ class DB
     {
         return Coupling::connect(
             $conf,
+            $this->uuid,
             $this->transaction,
             $this->record
         );
