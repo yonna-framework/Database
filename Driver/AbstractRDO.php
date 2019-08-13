@@ -26,7 +26,6 @@ abstract class AbstractRDO extends AbstractDB
      * 架构函数 取得模板对象实例
      * @access public
      * @param array $setting
-     * @throws Exception\DatabaseException
      */
     public function __construct(array $setting)
     {

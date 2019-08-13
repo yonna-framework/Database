@@ -3,7 +3,6 @@
 namespace Yonna\Database\Driver;
 
 use Yonna\Database\Support\Record;
-use Yonna\Database\Support\Transaction;
 use Yonna\Throwable\Exception;
 
 abstract class AbstractDB
@@ -228,11 +227,10 @@ abstract class AbstractDB
     /**
      * @tips 请求接口
      * @param string $query
-     * @throws Exception\DatabaseException
      */
     protected function query(string $query)
     {
-        $this->Record->add($this->db_type, $this->dsn(), $query);
+        Record::add($this->db_type, $this->dsn(), $query);
     }
 
     /**

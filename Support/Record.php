@@ -13,51 +13,44 @@ class Record extends Support
     /**
      * @var bool
      */
-    private $enable = false;
+    private static $enable = false;
 
     /**
      * 记录集
      * @var array
      */
-    private $records = [];
+    private static $records = [];
 
     /**
      * 时间基准
      * @var array
      */
-    private $record_time = null;
-
-    /**
-     * Record constructor.
-     */
-    public function __construct()
-    {
-        $this->record_time = $this->time();
-    }
-
-    /**
-     * @return bool
-     */
-    private function isEnable(): bool
-    {
-        return $this->enable;
-    }
-
-    /**
-     * @param bool $enable
-     */
-    public function setEnable(bool $enable): void
-    {
-        $this->enable = $enable;
-    }
+    private static $record_time = null;
 
     /**
      * get a new time
      * @return float|int
      */
-    private function time()
+    private static function time()
     {
         return 1000 * microtime(true);
+    }
+
+    /**
+     * @return bool
+     */
+    private static function isEnable(): bool
+    {
+        return self::$enable;
+    }
+
+    /**
+     * @param bool $enable
+     */
+    public static function setEnable(bool $enable): void
+    {
+        self::$enable = $enable;
+        self::$record_time = self::time();
     }
 
     /**
@@ -66,27 +59,27 @@ class Record extends Support
      * @param string $connect
      * @param string $record
      */
-    public function add(string $dbType, string $connect, string $record)
+    public static function add(string $dbType, string $connect, string $record)
     {
-        if ($this->isEnable() && $record) {
-            $microNow = $this->time();
-            $this->records[] = [
+        if (self::isEnable() && $record) {
+            $microNow = self::time();
+            self::$records[] = [
                 'type' => $dbType,
                 'connect' => $connect,
                 'query' => $record,
-                'time' => round($microNow - $this->record_time, 4) . 'ms',
+                'time' => round($microNow - self::$record_time, 4) . 'ms',
             ];
-            $this->record_time = $microNow;
+            self::$record_time = $microNow;
         }
     }
 
     /**
      * 清空记录
      */
-    public function clear()
+    public static function clear()
     {
-        $this->record_time = 0;
-        $this->records = [];
+        self::$record_time = 0;
+        self::$records = [];
     }
 
     /**
@@ -94,9 +87,9 @@ class Record extends Support
      * @param $dbTypes
      * @return array
      */
-    public function fetch($dbTypes = null): array
+    public static function fetch($dbTypes = null): array
     {
-        $this->setEnable(false);
+        self::setEnable(false);
         $record = [];
         if (is_string($dbTypes)) {
             $dbTypes = [$dbTypes];
@@ -104,7 +97,7 @@ class Record extends Support
         if (!is_array($dbTypes)) {
             $dbTypes = null;
         }
-        foreach ($this->records as $v) {
+        foreach (self::$records as $v) {
             if ($dbTypes === null || in_array($v['type'], $dbTypes)) {
                 $record[] = $v;
             }

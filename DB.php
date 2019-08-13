@@ -15,45 +15,12 @@ class DB
 {
 
     /**
-     * transaction object
-     * @var Transaction
-     */
-    private $transaction = null;
-
-    /**
-     * record object
-     * @var Record
-     */
-    private $record = null;
-
-    /**
-     * new one
-     * @return DB
-     */
-    public static function new()
-    {
-        return (new self());
-    }
-
-    /**
-     * DB constructor.
-     * the transaction is auto open,it will push driver into the stack
-     */
-    public function __construct()
-    {
-        $this->transaction = (new Transaction());
-        $this->record = (new Record());
-    }
-
-    // database record
-
-    /**
      * enable record feature
      */
-    public function startRecord()
+    public static function startRecord()
     {
-        $this->record->clear();
-        $this->record->setEnable(true);
+        Record::clear();
+        Record::setEnable(true);
     }
 
     /**
@@ -62,9 +29,9 @@ class DB
      * @return array
      * @see Type
      */
-    public function fetchRecord($dbType = null)
+    public static function fetchRecord($dbType = null)
     {
-        return $this->record->fetch($dbType);
+        return Record::fetch($dbType);
     }
 
     // transaction
@@ -72,17 +39,17 @@ class DB
     /**
      * trans start
      */
-    public function beginTrans()
+    public static function beginTrans()
     {
-        $this->transaction->begin();
+        Transaction::begin();
     }
 
     /**
      * trans commit
      */
-    public function commitTrans()
+    public static function commitTrans()
     {
-        $this->transaction->commit();
+        Transaction::commit();
     }
 
     /**
@@ -90,7 +57,7 @@ class DB
      */
     public function rollBackTrans()
     {
-        $this->transaction->rollback();
+        Transaction::rollback();
     }
 
     /**
@@ -99,7 +66,7 @@ class DB
      */
     public function inTrans(): bool
     {
-        return $this->transaction->in();
+        return Transaction::in();
     }
 
     // connector
@@ -108,7 +75,7 @@ class DB
      * @param string $conf
      * @return object|\Yonna\Database\Driver\Mongo|\Yonna\Database\Driver\Mssql|\Yonna\Database\Driver\Mysql|\Yonna\Database\Driver\Pgsql|\Yonna\Database\Driver\Redis|\Yonna\Database\Driver\Sqlite
      */
-    public function connect($conf = 'default')
+    public static function connect($conf = 'default')
     {
         return Coupling::connect($conf);
     }
@@ -117,72 +84,72 @@ class DB
      * @param string $conf
      * @return \Yonna\Database\Driver\Mysql
      */
-    public function mysql($conf = 'mysql')
+    public static function mysql($conf = 'mysql')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::MYSQL;
         }
-        return $this->connect($conf);
+        return self::connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Pgsql
      */
-    public function pgsql($conf = 'pgsql')
+    public static function pgsql($conf = 'pgsql')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::PGSQL;
         }
-        return $this->connect($conf);
+        return self::connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Mssql
      */
-    public function mssql($conf = 'mssql')
+    public static function mssql($conf = 'mssql')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::MSSQL;
         }
-        return $this->connect($conf);
+        return self::connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Sqlite
      */
-    public function sqlite($conf = 'sqlite')
+    public static function sqlite($conf = 'sqlite')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::SQLITE;
         }
-        return $this->connect($conf);
+        return self::connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Mongo
      */
-    public function mongo($conf = 'mongo')
+    public static function mongo($conf = 'mongo')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::MONGO;
         }
-        return $this->connect($conf);
+        return self::connect($conf);
     }
 
     /**
      * @param string $conf
      * @return \Yonna\Database\Driver\Redis
      */
-    public function redis($conf = 'redis')
+    public static function redis($conf = 'redis')
     {
         if (is_array($conf)) {
             $conf['type'] = Type::REDIS;
         }
-        return $this->connect($conf);
+        return self::connect($conf);
     }
 
 }
