@@ -31,11 +31,7 @@ abstract class AbstractRDO extends AbstractDB
     public function __construct(array $setting)
     {
         parent::__construct($setting);
-        $this->redis = Malloc::allocation($this->dsn(), $this->db_type, [
-            'host' => $this->host,
-            'port' => $this->port,
-            'password' => $this->password,
-        ]);
+        $this->redis = $this->malloc();
         return $this;
     }
 

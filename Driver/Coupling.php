@@ -15,11 +15,10 @@ class Coupling
     /**
      * 连接数据库
      * @param string | array $conf
-     * @param array $support
      * @return Mysql|Pgsql|Mssql|Sqlite|Mongo|Redis
      * @throws null
      */
-    public static function connect($conf = 'default', ... $support): object
+    public static function connect($conf = 'default'): object
     {
         if (static::$config === null) {
             static::$config = Config::fetch();
@@ -50,9 +49,6 @@ class Coupling
 
         $u = crc32(serialize($link));
         if (!isset(static::$coupler[$u])) {
-            $link['uuid'] = $support[0];
-            $link['transaction'] = $support[1];
-            $link['record'] = $support[2];
             $driver = "\\Yonna\\Database\\Driver\\{$link['type']}";
             static::$coupler[$u] = new $driver($link);
         }

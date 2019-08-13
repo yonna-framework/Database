@@ -35,14 +35,15 @@ class Malloc
 
     /**
      * malloc
-     * @param string $dsn
-     * @param string $dbType
      * @param array $params
      * @return mixed
      * @throws null
      */
-    public static function allocation(string $dsn, string $dbType, array $params = [])
+    public static function allocation(array $params = [])
     {
+
+        $dsn = $params['dsn'];
+        $dbType = $params['db_type'];
 
         $key = self::key($dsn, $dbType, $params);
         $instance = null;

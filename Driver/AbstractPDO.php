@@ -149,11 +149,7 @@ abstract class AbstractPDO extends AbstractDB
      */
     protected function pdo()
     {
-        return Malloc::allocation($this->dsn(), $this->db_type, [
-            'account' => $this->account,
-            'password' => $this->password,
-            'charset' => $this->charset,
-        ]);
+        return $this->malloc();
     }
 
     /**

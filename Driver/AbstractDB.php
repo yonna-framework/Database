@@ -15,12 +15,6 @@ abstract class AbstractDB
     const ASC = 'asc';
 
     /**
-     * uuid
-     * @var null
-     */
-    protected $UUID = null;
-
-    /**
      * 数据库驱动类型
      * @var null
      */
@@ -85,18 +79,6 @@ abstract class AbstractDB
     private $use_crypto = false;
 
     /**
-     * 事务对象
-     * @var Transaction
-     */
-    protected $Transaction = null;
-
-    /**
-     * 记录对象
-     * @var Record
-     */
-    protected $Record = null;
-
-    /**
      * 构造方法
      *
      * @param array $setting
@@ -119,9 +101,6 @@ abstract class AbstractDB
         //
         $this->fetchQuery = false;
         $this->Crypto = new Crypto($this->crypto_type, $this->crypto_secret, $this->crypto_iv);
-        $this->UUID = $setting['uuid'] ?? null;
-        $this->Transaction = $setting['transaction'] ?? null;
-        $this->Record = $setting['record'] ?? null;
         return $this;
     }
 
@@ -193,10 +172,9 @@ abstract class AbstractDB
      * 寻连接池
      * @return mixed
      */
-    protected function pooling()
+    protected function malloc()
     {
-        return Pooling::malloc([
-            'uuid' => $this->UUID,
+        return Malloc::allocation([
             'dsn' => $this->dsn(),
             'db_type' => $this->db_type,
             'host' => $this->host,
