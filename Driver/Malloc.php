@@ -7,6 +7,7 @@ use PDO;
 use Redis;
 use Swoole\Coroutine\Redis as SwRedis;
 use Throwable;
+use Yonna\Database\Support\Transaction;
 use Yonna\Throwable\Exception;
 
 class Malloc
@@ -126,6 +127,7 @@ class Malloc
                         Exception::database("{$dbType} not support pooling yet");
                         break;
                 }
+                Transaction::in($instance);
             } catch (Throwable $e) {
                 Exception::throw($e->getMessage());
             }

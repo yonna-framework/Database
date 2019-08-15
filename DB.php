@@ -3,10 +3,19 @@
 
 namespace Yonna\Database;
 
+use Closure;
+use Throwable;
 use Yonna\Database\Driver\Coupling;
+use Yonna\Database\Driver\Mongo;
+use Yonna\Database\Driver\Mssql;
+use Yonna\Database\Driver\Mysql;
+use Yonna\Database\Driver\Pgsql;
+use Yonna\Database\Driver\Redis;
+use Yonna\Database\Driver\Sqlite;
 use Yonna\Database\Driver\Type;
 use Yonna\Database\Support\Record;
 use Yonna\Database\Support\Transaction;
+use Yonna\Throwable\Exception;
 
 /**
  * Class DB
@@ -35,6 +44,23 @@ class DB
     }
 
     // transaction
+
+    /**
+     * trans start
+     * @param Closure $call
+     * @throws Exception\DatabaseException
+     */
+    public static function transTrace(Closure $call)
+    {
+        try {
+            Transaction::begin();
+            $call();
+            Transaction::commit();
+        } catch (Throwable $e) {
+            Transaction::rollback();
+            Exception::database($e->getMessage());
+        }
+    }
 
     /**
      * trans start
@@ -69,11 +95,11 @@ class DB
         return Transaction::in();
     }
 
-    // connector
+// connector
 
     /**
      * @param string $conf
-     * @return object|\Yonna\Database\Driver\Mongo|\Yonna\Database\Driver\Mssql|\Yonna\Database\Driver\Mysql|\Yonna\Database\Driver\Pgsql|\Yonna\Database\Driver\Redis|\Yonna\Database\Driver\Sqlite
+     * @return object|Mongo|Mssql|Mysql|Pgsql|Redis|Sqlite
      */
     public static function connect($conf = 'default')
     {
@@ -82,7 +108,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Driver\Mysql
+     * @return Mysql
      */
     public static function mysql($conf = 'mysql')
     {
@@ -94,7 +120,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Driver\Pgsql
+     * @return Pgsql
      */
     public static function pgsql($conf = 'pgsql')
     {
@@ -106,7 +132,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Driver\Mssql
+     * @return Mssql
      */
     public static function mssql($conf = 'mssql')
     {
@@ -118,7 +144,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Driver\Sqlite
+     * @return Sqlite
      */
     public static function sqlite($conf = 'sqlite')
     {
@@ -130,7 +156,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Driver\Mongo
+     * @return Mongo
      */
     public static function mongo($conf = 'mongo')
     {
@@ -142,7 +168,7 @@ class DB
 
     /**
      * @param string $conf
-     * @return \Yonna\Database\Driver\Redis
+     * @return Redis
      */
     public static function redis($conf = 'redis')
     {
