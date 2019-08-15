@@ -3,6 +3,10 @@
 namespace Yonna\Database\Support;
 
 
+use Closure;
+use PDO;
+use Yonna\Database\Driver\Type;
+
 /**
  * 事务
  * Class Transaction
@@ -11,11 +15,71 @@ namespace Yonna\Database\Support;
 class Transaction extends Support
 {
 
-
     /**
      * 多重嵌套事务处理堆栈
      */
-    protected static $transTrace = 0;
+    private static $transTrace = 0;
+
+
+    /**
+     * dbo 实例
+     * [
+     *      type => Mysql | Pgsql | Mssql | Sqlite | Mongo | Redis
+     *      instance => object
+     * ]
+     * @var array
+     */
+    private static $instances = [];
+
+    /**
+     * 获取 instance
+     * @param $item
+     * @return PDO
+     */
+    private static function getInstances($item)
+    {
+        return $item['instance'];
+    }
+
+
+    /**
+     * 事务
+     * @param Closure $call
+     * @return bool
+     */
+    public static function transTrace(Closure $call)
+    {
+        if (empty(self::$instances)) {
+            return true;
+        }
+        if (self::$transTrace <= 0) {
+            self::$transTrace = 1;
+            foreach (self::$instances as $tran) {
+                switch ($tran['db_type']) {
+                    case Type::MONGO:
+                        break;
+                    case Type::REDIS:
+                        break;
+                    case Type::REDIS_CO:
+                        break;
+                    case Type::MYSQL:
+                    case Type::PGSQL:
+                    case Type::MSSQL:
+                    case Type::SQLITE:
+                    default:
+                        $instance = self::getInstances($tran['instance']);
+                        if ($instance->inTransaction()) {
+                            $instance->commit();
+                        }
+                        $instance->beginTransaction();
+                        break;
+                }
+            }
+        } else {
+            self::$transTrace += 1;
+        }
+        $call();
+    }
 
 
     /**
