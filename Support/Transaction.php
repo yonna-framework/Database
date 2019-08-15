@@ -5,7 +5,13 @@ namespace Yonna\Database\Support;
 
 use Closure;
 use PDO;
-use Yonna\Database\Driver\Type;
+use PDOException;
+use Redis;
+use Swoole\Coroutine\Redis as SwRedis;
+use MongoDB\Driver\Manager as MongoDBManager;
+use MongoDB\Driver\Session as MongoDBSession;
+use Throwable;
+use Yonna\Throwable\Exception;
 
 /**
  * 事务
@@ -23,118 +29,15 @@ class Transaction extends Support
 
     /**
      * dbo 实例
-     * [
-     *      type => Mysql | Pgsql | Mssql | Sqlite | Mongo | Redis
-     *      instance => object
-     * ]
      * @var array
      */
     private static $instances = [];
 
     /**
-     * 获取 instance
-     * @param $item
-     * @return PDO
+     * mongodb session
+     * @var MongoDBSession
      */
-    private static function getInstances($item)
-    {
-        return $item['instance'];
-    }
-
-
-    /**
-     * 事务
-     * @param Closure $call
-     * @return bool
-     */
-    public static function transTrace(Closure $call)
-    {
-        if (empty(self::$instances)) {
-            return true;
-        }
-        if (self::$transTrace <= 0) {
-            self::$transTrace = 1;
-            foreach (self::$instances as $tran) {
-                switch ($tran['db_type']) {
-                    case Type::MONGO:
-                        break;
-                    case Type::REDIS:
-                        break;
-                    case Type::REDIS_CO:
-                        break;
-                    case Type::MYSQL:
-                    case Type::PGSQL:
-                    case Type::MSSQL:
-                    case Type::SQLITE:
-                    default:
-                        $instance = self::getInstances($tran['instance']);
-                        if ($instance->inTransaction()) {
-                            $instance->commit();
-                        }
-                        $instance->beginTransaction();
-                        break;
-                }
-            }
-        } else {
-            self::$transTrace += 1;
-        }
-        $call();
-    }
-
-
-    /**
-     * 开始事务
-     */
-    public static function begin()
-    {
-        if (self::$transTrace <= 0) {
-            if (self::$pdo()->inTransaction()) {
-                self::$pdo()->commit();
-            }
-            self::$transTrace = 1;
-        } else {
-            self::$transTrace++;
-            return true;
-        }
-        try {
-            return self::$pdo()->beginTransaction();
-        } catch (PDOException $e) {
-            // 服务端断开时重连一次
-            if ($e->errorInfo[1] == 2006 || $e->errorInfo[1] == 2013) {
-                self::$pdoClose();
-                return self::$pdo()->beginTransaction();
-            } else {
-                throw $e;
-            }
-        }
-    }
-
-    /**
-     * 提交事务
-     */
-    public static function commit()
-    {
-        self::$transTrace > 0 && self::$transTrace--;
-        if (self::$transTrace > 0) {
-            return true;
-        }
-        return self::$pdo()->commit();
-    }
-
-    /**
-     * 事务回滚
-     */
-    public static function rollback()
-    {
-        self::$transTrace > 0 && self::$transTrace--;
-        if (self::$transTrace > 0) {
-            return true;
-        }
-        if (self::$pdo()->inTransaction()) {
-            return self::$pdo()->rollBack();
-        }
-        return false;
-    }
+    private static $mongodbSession = null;
 
     /**
      * 检测是否在一个事务内
@@ -144,5 +47,182 @@ class Transaction extends Support
     {
         return self::$transTrace > 0;
     }
+
+    /**
+     * 事务
+     * @param Closure $call
+     * @return bool
+     * @throws Throwable
+     */
+    public static function transTrace(Closure $call)
+    {
+        if (empty(self::$instances)) {
+            return true;
+        }
+        try {
+            if (self::$transTrace <= 0) {
+                self::$transTrace = 1;
+                foreach (self::$instances as $instance) {
+                    if ($instance instanceof PDO) {
+                        if ($instance->inTransaction()) {
+                            $instance->commit();
+                        }
+                        try {
+                            $instance->beginTransaction();
+                        } catch (PDOException $e) {
+                            // 服务端断开时重连 1 次
+                            if ($e->errorInfo[1] == 2006 || $e->errorInfo[1] == 2013) {
+                                $instance->beginTransaction();
+                            } else {
+                                throw $e;
+                            }
+                        }
+                    } elseif ($instance instanceof MongoDBManager) {
+                        self::$mongodbSession = $instance->startSession();
+                        self::$mongodbSession->startTransaction([]);
+                    } elseif ($instance instanceof Redis) {
+                        $instance->multi();
+                    } elseif ($instance instanceof SwRedis) {
+                        $instance->multi();
+                    }
+                }
+            } else {
+                self::$transTrace += 1;
+            }
+
+            $call();
+
+            if (self::$transTrace > 0) {
+                self::$transTrace -= 1;
+            }
+            if (self::$transTrace <= 0) {
+                foreach (self::$instances as $instance) {
+                    if ($instance instanceof PDO) {
+                        $instance->commit();
+                    } elseif ($instance instanceof MongoDBManager) {
+                        self::$mongodbSession->commitTransaction();
+                        self::$mongodbSession = null;
+                    } elseif ($instance instanceof Redis) {
+                        $instance->exec();
+                    } elseif ($instance instanceof SwRedis) {
+                        $instance->exec();
+                    }
+                }
+            }
+
+        } catch (Throwable $e) {
+            if (self::$transTrace > 0) {
+                self::$transTrace -= 1;
+            }
+            if (self::$transTrace <= 0) {
+                foreach (self::$instances as $instance) {
+                    if ($instance instanceof PDO) {
+                        if ($instance->inTransaction()) {
+                            $instance->rollBack();
+                        }
+                        return false;
+                    } elseif ($instance instanceof MongoDBManager) {
+                        self::$mongodbSession->abortTransaction();
+                        self::$mongodbSession = null;
+                    } elseif ($instance instanceof Redis) {
+                        $instance->discard();
+                    } elseif ($instance instanceof SwRedis) {
+                        $instance->discard();
+                    }
+                }
+            }
+            Exception::origin($e);
+        }
+        return true;
+    }
+
+
+    /**
+     * 开始事务
+     */
+    public static function begin()
+    {
+        if (self::$transTrace <= 0) {
+            self::$transTrace = 1;
+            foreach (self::$instances as $instance) {
+                if ($instance instanceof PDO) {
+                    if ($instance->inTransaction()) {
+                        $instance->commit();
+                    }
+                    try {
+                        $instance->beginTransaction();
+                    } catch (PDOException $e) {
+                        // 服务端断开时重连 1 次
+                        if ($e->errorInfo[1] == 2006 || $e->errorInfo[1] == 2013) {
+                            $instance->beginTransaction();
+                        } else {
+                            throw $e;
+                        }
+                    }
+                } elseif ($instance instanceof MongoDBManager) {
+                    self::$mongodbSession = $instance->startSession();
+                    self::$mongodbSession->startTransaction([]);
+                } elseif ($instance instanceof Redis) {
+                    $instance->multi();
+                } elseif ($instance instanceof SwRedis) {
+                    $instance->multi();
+                }
+            }
+        } else {
+            self::$transTrace += 1;
+        }
+    }
+
+    /**
+     * 提交事务
+     */
+    public static function commit()
+    {
+        if (self::$transTrace > 0) {
+            self::$transTrace -= 1;
+        }
+        if (self::$transTrace <= 0) {
+            foreach (self::$instances as $instance) {
+                if ($instance instanceof PDO) {
+                    $instance->commit();
+                } elseif ($instance instanceof MongoDBManager) {
+                    self::$mongodbSession->commitTransaction();
+                    self::$mongodbSession = null;
+                } elseif ($instance instanceof Redis) {
+                    $instance->exec();
+                } elseif ($instance instanceof SwRedis) {
+                    $instance->exec();
+                }
+            }
+        }
+    }
+
+    /**
+     * 事务回滚
+     */
+    public static function rollback()
+    {
+        if (self::$transTrace > 0) {
+            self::$transTrace -= 1;
+        }
+        if (self::$transTrace <= 0) {
+            foreach (self::$instances as $instance) {
+                if ($instance instanceof PDO) {
+                    if ($instance->inTransaction()) {
+                        $instance->rollBack();
+                    }
+                    return false;
+                } elseif ($instance instanceof MongoDBManager) {
+                    self::$mongodbSession->abortTransaction();
+                    self::$mongodbSession = null;
+                } elseif ($instance instanceof Redis) {
+                    $instance->discard();
+                } elseif ($instance instanceof SwRedis) {
+                    $instance->discard();
+                }
+            }
+        }
+    }
+
 
 }
