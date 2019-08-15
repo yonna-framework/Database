@@ -127,7 +127,7 @@ class Malloc
                         Exception::database("{$dbType} not support pooling yet");
                         break;
                 }
-                Transaction::in($instance);
+                Transaction::register($instance);
             } catch (Throwable $e) {
                 Exception::throw($e->getMessage());
             }

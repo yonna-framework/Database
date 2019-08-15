@@ -9,6 +9,7 @@ use Redis;
 use Swoole\Coroutine\Redis as SwRedis;
 use MongoDB\Driver\Manager as MongoDBManager;
 use MongoDB\Driver\Session as MongoDBSession;
+use Yonna\Throwable\Exception;
 
 /**
  * 事务
@@ -48,6 +49,7 @@ class Transaction extends Support
     /**
      * 注册实例
      * @param $instance
+     * @throws null
      */
     public static function register($instance)
     {
@@ -55,9 +57,11 @@ class Transaction extends Support
             && !$instance instanceof Redis
             && !$instance instanceof SwRedis
             && !$instance instanceof MongoDBManager) {
-            
+            Exception::database('instance error');
         }
-        self::$instances[] = $instance;
+        if (!in_array($instance, self::$instances)) {
+            self::$instances[] = $instance;
+        }
     }
 
     /**
