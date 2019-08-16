@@ -95,7 +95,7 @@ class DB
         return Transaction::in();
     }
 
-// connector
+    // connector
 
     /**
      * @param string $conf

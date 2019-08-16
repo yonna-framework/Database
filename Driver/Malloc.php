@@ -4,9 +4,11 @@ namespace Yonna\Database\Driver;
 
 
 use PDO;
+use MongoDB\Driver\Manager as MongoManager;
 use Redis;
 use Swoole\Coroutine\Redis as SwRedis;
 use Throwable;
+use Yonna\Database\Driver\Mongo\Client as MongoClient;
 use Yonna\Database\Support\Transaction;
 use Yonna\Throwable\Exception;
 
@@ -89,13 +91,24 @@ class Malloc
                             )
                         );
                         break;
+                    case Type::MONGO:
+                        if (class_exists('\\MongoDB\Driver\Manager')) {
+                            try {
+                                $instance = new MongoClient();
+                                $instance->setManager(new MongoManager($dsn));
+                            } catch (Throwable $e) {
+                                $instance = null;
+                                Exception::database('MongoDB manager has some problem or uninstall,Stop it help you application');
+                            }
+                        }
+                        break;
                     case Type::REDIS:
                         if (class_exists('\\Redis')) {
                             try {
                                 $instance = new Redis();
-                            } catch (\Exception $e) {
+                            } catch (Throwable $e) {
                                 $instance = null;
-                                Exception::database('Redis has some problem or uninstall，Stop it help you application.');
+                                Exception::database('Redis has some problem or uninstall,Stop it help you application.');
                             }
                             $instance->connect(
                                 $params['host'],
@@ -110,9 +123,9 @@ class Malloc
                         if (class_exists('SwRedis')) {
                             try {
                                 $instance = new SwRedis();
-                            } catch (\Exception $e) {
+                            } catch (Throwable $e) {
                                 $instance = null;
-                                Exception::database('Swoole Redis has some problem or uninstall，Stop it help you application.');
+                                Exception::database('Swoole Redis has some problem or uninstall,Stop it help you application.');
                             }
                             $instance->connect(
                                 $params['host'],
@@ -131,6 +144,7 @@ class Malloc
             } catch (Throwable $e) {
                 Exception::throw($e->getMessage());
             }
+            static::$malloc[$key] = $instance;
         }
         return $instance;
     }

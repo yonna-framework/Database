@@ -7,8 +7,7 @@ use PDO;
 use PDOException;
 use Redis;
 use Swoole\Coroutine\Redis as SwRedis;
-use MongoDB\Driver\Manager as MongoDBManager;
-use MongoDB\Driver\Session as MongoDBSession;
+use Yonna\Database\Driver\Mongo\Client as MongoClient;
 use Yonna\Throwable\Exception;
 
 /**
@@ -32,12 +31,6 @@ class Transaction extends Support
     private static $instances = [];
 
     /**
-     * mongodb session
-     * @var MongoDBSession
-     */
-    private static $mongodbSession = null;
-
-    /**
      * 检测是否在一个事务内
      * @return bool
      */
@@ -56,40 +49,11 @@ class Transaction extends Support
         if (!$instance instanceof PDO
             && !$instance instanceof Redis
             && !$instance instanceof SwRedis
-            && !$instance instanceof MongoDBManager) {
+            && !$instance instanceof MongoClient) {
             Exception::database('instance error');
         }
         if (!in_array($instance, self::$instances)) {
             self::$instances[] = $instance;
-        }
-    }
-
-    /**
-     * 事务回滚
-     */
-    public static function rollback()
-    {
-        if (empty(self::$instances)) {
-            return;
-        }
-        if (self::in()) {
-            self::$transTrace -= 1;
-        }
-        if (!self::in()) {
-            foreach (self::$instances as $instance) {
-                if ($instance instanceof PDO) {
-                    if ($instance->inTransaction()) {
-                        $instance->rollBack();
-                    }
-                } elseif ($instance instanceof MongoDBManager) {
-                    self::$mongodbSession->abortTransaction();
-                    self::$mongodbSession = null;
-                } elseif ($instance instanceof Redis) {
-                    $instance->discard();
-                } elseif ($instance instanceof SwRedis) {
-                    $instance->discard();
-                }
-            }
         }
     }
 
@@ -118,9 +82,9 @@ class Transaction extends Support
                             throw $e;
                         }
                     }
-                } elseif ($instance instanceof MongoDBManager) {
-                    self::$mongodbSession = $instance->startSession();
-                    self::$mongodbSession->startTransaction([]);
+                } elseif ($instance instanceof MongoClient) {
+                    $instance->setSession($instance->getManager()->startSession());
+                    $instance->getSession()->startTransaction([]);
                 } elseif ($instance instanceof Redis) {
                     $instance->multi();
                 } elseif ($instance instanceof SwRedis) {
@@ -147,9 +111,10 @@ class Transaction extends Support
             foreach (self::$instances as $instance) {
                 if ($instance instanceof PDO) {
                     $instance->commit();
-                } elseif ($instance instanceof MongoDBManager) {
-                    self::$mongodbSession->commitTransaction();
-                    self::$mongodbSession = null;
+                } elseif ($instance instanceof MongoClient) {
+                    $instance->getSession()->commitTransaction();
+                    $instance->getSession()->endSession();
+                    $instance->setSession(null);
                 } elseif ($instance instanceof Redis) {
                     $instance->exec();
                 } elseif ($instance instanceof SwRedis) {
@@ -159,5 +124,34 @@ class Transaction extends Support
         }
     }
 
+    /**
+     * 事务回滚
+     */
+    public static function rollback()
+    {
+        if (empty(self::$instances)) {
+            return;
+        }
+        if (self::in()) {
+            self::$transTrace -= 1;
+        }
+        if (!self::in()) {
+            foreach (self::$instances as $instance) {
+                if ($instance instanceof PDO) {
+                    if ($instance->inTransaction()) {
+                        $instance->rollBack();
+                    }
+                } elseif ($instance instanceof MongoClient) {
+                    $instance->getSession()->abortTransaction();
+                    $instance->getSession()->endSession();
+                    $instance->setSession(null);
+                } elseif ($instance instanceof Redis) {
+                    $instance->discard();
+                } elseif ($instance instanceof SwRedis) {
+                    $instance->discard();
+                }
+            }
+        }
+    }
 
 }

@@ -5,16 +5,11 @@ namespace Yonna\Database\Driver;
 use MongoDB;
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\Exception\BulkWriteException;
+use Yonna\Database\Driver\Mongo\Client;
 use Yonna\Throwable\Exception;
 
 abstract class AbstractMDO extends AbstractDB
 {
-
-    /**
-     * @var MongoDB\Driver\Manager | null
-     *
-     */
-    protected $mongoManager = null;
 
     /**
      * @var string
@@ -25,27 +20,28 @@ abstract class AbstractMDO extends AbstractDB
      * 架构函数 取得模板对象实例
      * @access public
      * @param array $setting
-     * @throws Exception\DatabaseException
      */
     public function __construct(array $setting)
     {
         parent::__construct($setting);
         $this->collection = $setting['collection'];
-        if ($this->mongoManager == null) {
-            if (class_exists('\\MongoDB\Driver\Manager')) {
-                try {
-                    $this->mongoManager = new MongoDB\Driver\Manager($this->dsn());
-                } catch (\Exception $e) {
-                    $this->mongoManager = null;
-                    Exception::database('MongoDB遇到问题或未安装，请暂时停用MongoDB以减少阻塞卡顿');
-                }
-            }
-        }
     }
 
+    /**
+     * 析构函数
+     */
     public function __destruct()
     {
         parent::__destruct();
+    }
+
+    /**
+     * 获取 MDO
+     * @return Client
+     */
+    protected function mdo()
+    {
+        return $this->malloc();
     }
 
     /**
@@ -59,31 +55,38 @@ abstract class AbstractMDO extends AbstractDB
     /**
      * 设置执行命令
      * @param $command
-     * @param mixed ...$options
+     * @param mixed ...$params
      * @return mixed
      * @throws Exception\DatabaseException
      */
-    protected function query($command, ...$options)
+    protected function query($command, ...$params)
     {
         $result = null;
         $commandStr = "un know command";
+
+        $options = [];
+        $session = $this->mdo()->getSession();
+        if ($session) {
+            $options['session'] = $session;
+        }
+
         switch ($command) {
             case 'insert':
-                $data = $options[0];
+                $data = $params[0];
                 $bulk = new BulkWrite();
                 try {
                     $bulk->insert($data);
                 } catch (BulkWriteException $e) {
                     Exception::database($e->getMessage());
                 }
-                $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
+                $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $options);
                 $ids = $result->getUpsertedIds();
                 $count = $result->getInsertedCount();
                 $result = [$ids, $count];
-                $commandStr = "db.{$this->collection}.insertOne(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
+                $commandStr = "db.{$this->collection}.insertOne(" . json_encode($params[0], JSON_UNESCAPED_UNICODE) . ')';
                 break;
             case 'insertAll':
-                $data = $options[0];
+                $data = $params[0];
                 $bulk = new BulkWrite();
                 try {
                     foreach ($data as $d) {
@@ -92,11 +95,11 @@ abstract class AbstractMDO extends AbstractDB
                 } catch (BulkWriteException $e) {
                     Exception::database($e->getMessage());
                 }
-                $result = $this->mongoManager->executeBulkWrite($this->name . '.' . $this->collection, $bulk);
+                $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $options);
                 $ids = $result->getUpsertedIds();
                 $count = $result->getInsertedCount();
                 $result = [$ids, $count];
-                $commandStr = "db.{$this->collection}.insertMany(" . json_encode($options[0], JSON_UNESCAPED_UNICODE) . ')';
+                $commandStr = "db.{$this->collection}.insertMany(" . json_encode($params[0], JSON_UNESCAPED_UNICODE) . ')';
                 break;
         }
         parent::query($commandStr);
@@ -113,7 +116,7 @@ abstract class AbstractMDO extends AbstractDB
             'query' => $query
         ]);
         print_r($cmd);
-        $row = $this->mongoManager->executeCommand("olddream", $cmd);
+        $row = $this->mdo()->executeCommand("olddream", $cmd);
     }
 
 }
