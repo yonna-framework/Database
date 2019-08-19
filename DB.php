@@ -16,6 +16,7 @@ use Yonna\Database\Driver\Type;
 use Yonna\Database\Support\Record;
 use Yonna\Database\Support\Transaction;
 use Yonna\Throwable\Exception;
+use Yonna\Throwable\Exception\DatabaseException;
 
 /**
  * Class DB
@@ -48,7 +49,7 @@ class DB
     /**
      * trans start
      * @param Closure $call
-     * @throws Exception\DatabaseException
+     * @throws Throwable
      */
     public static function transTrace(Closure $call)
     {
@@ -58,7 +59,7 @@ class DB
             Transaction::commit();
         } catch (Throwable $e) {
             Transaction::rollback();
-            Exception::database($e->getMessage());
+            Exception::origin($e);
         }
     }
 

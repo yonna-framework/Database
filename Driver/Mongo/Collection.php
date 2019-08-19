@@ -37,4 +37,14 @@ class Collection extends AbstractMDO
         return $this->query('insertAll', $data);
     }
 
+    /**
+     * insert all
+     * @return mixed
+     * @throws DatabaseException
+     */
+    public function tt()
+    {
+        return $this->test();
+    }
+
 }
