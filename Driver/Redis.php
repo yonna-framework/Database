@@ -37,10 +37,10 @@ class Redis extends AbstractRDO
      */
     public function select(int $index, Closure $tempCall = null)
     {
-        if ($this->redis !== null && $index >= 0 && $index <= 15) {
+        if ($this->rdo() !== null && $index >= 0 && $index <= 15) {
             $index = (int)$index;
             if ($tempCall !== null) {
-                $preIndex = $this->redis->getDBNum();
+                $preIndex = $this->rdo()->getDBNum();
                 $this->query('select', $index);
                 $tempCall();
                 $this->query('select', $preIndex);
@@ -57,7 +57,7 @@ class Redis extends AbstractRDO
     public function time()
     {
         $time = -1;
-        if ($this->redis !== null) {
+        if ($this->rdo() !== null) {
             $time = $this->query('time');
         }
         return $time;
@@ -70,7 +70,7 @@ class Redis extends AbstractRDO
     public function dbSize()
     {
         $size = -1;
-        if ($this->redis !== null) {
+        if ($this->rdo() !== null) {
             $size = $this->query('dbsize');
         }
         return $size;
@@ -82,7 +82,7 @@ class Redis extends AbstractRDO
      */
     public function bgRewriteAof($sure = false)
     {
-        if ($this->redis !== null && $sure === true) {
+        if ($this->rdo() !== null && $sure === true) {
             $this->query('bgrewriteaof');
         }
     }
@@ -93,7 +93,7 @@ class Redis extends AbstractRDO
      */
     public function save($sure = false)
     {
-        if ($this->redis !== null && $sure === true) {
+        if ($this->rdo() !== null && $sure === true) {
             $this->query('save');
         }
     }
@@ -104,7 +104,7 @@ class Redis extends AbstractRDO
      */
     public function bgSave($sure = false)
     {
-        if ($this->redis !== null && $sure === true) {
+        if ($this->rdo() !== null && $sure === true) {
             $this->query('bgsave');
         }
     }
@@ -115,7 +115,7 @@ class Redis extends AbstractRDO
      */
     public function lastSave($sure = false)
     {
-        if ($this->redis !== null && $sure === true) {
+        if ($this->rdo() !== null && $sure === true) {
             $this->query('lastsave');
         }
     }
@@ -126,7 +126,7 @@ class Redis extends AbstractRDO
      */
     public function flushAll($sure = false)
     {
-        if ($this->redis !== null && $sure === true) {
+        if ($this->rdo() !== null && $sure === true) {
             $this->query('flushall');
         }
     }
@@ -137,7 +137,7 @@ class Redis extends AbstractRDO
      */
     public function flushDB($sure = false)
     {
-        if ($this->redis !== null && $sure === true) {
+        if ($this->rdo() !== null && $sure === true) {
             $this->query('flushdb');
         }
     }
@@ -150,7 +150,7 @@ class Redis extends AbstractRDO
     public function info($section = 'default')
     {
         $result = null;
-        if ($this->redis !== null && $section) {
+        if ($this->rdo() !== null && $section) {
             $result = $this->query('info', $section);
         }
         return $result;
@@ -162,7 +162,7 @@ class Redis extends AbstractRDO
      */
     public function delete($key)
     {
-        if ($this->redis !== null && $key) {
+        if ($this->rdo() !== null && $key) {
             $this->query('delete', $key);
         }
     }
@@ -175,7 +175,7 @@ class Redis extends AbstractRDO
     public function ttl($key): int
     {
         $ttl = -1;
-        if ($this->redis !== null && $key) {
+        if ($this->rdo() !== null && $key) {
             $ttl = $this->query('ttl', $key);
         }
         return $ttl;
@@ -189,7 +189,7 @@ class Redis extends AbstractRDO
     public function pttl($key): int
     {
         $ttl = -1;
-        if ($this->redis !== null && $key) {
+        if ($this->rdo() !== null && $key) {
             $ttl = $this->query('pttl', $key);
         }
         return $ttl;
@@ -203,7 +203,7 @@ class Redis extends AbstractRDO
     public function exists(string $key): bool
     {
         $exist = false;
-        if ($this->redis !== null && $key) {
+        if ($this->rdo() !== null && $key) {
             $exist = $this->query('exists', $key);
         }
         return $exist;
@@ -217,7 +217,7 @@ class Redis extends AbstractRDO
      */
     public function expire($key, int $timeout = 0)
     {
-        if ($this->redis !== null && $key && $timeout > 0) {
+        if ($this->rdo() !== null && $key && $timeout > 0) {
             if ($timeout > 0) {
                 $this->query('expire', $key, $timeout);
             }
@@ -233,7 +233,7 @@ class Redis extends AbstractRDO
      */
     public function pSet($key, $value, int $ttl = 0)
     {
-        if ($this->redis !== null && $key) {
+        if ($this->rdo() !== null && $key) {
             if ($ttl <= 0) {
                 if (is_array($value)) {
                     $this->query('set', $key, self::TYPE_OBJ, json_encode($value));
@@ -267,7 +267,7 @@ class Redis extends AbstractRDO
      */
     public function set($key, $value, int $ttl = 0)
     {
-        if ($this->redis !== null && $key) {
+        if ($this->rdo() !== null && $key) {
             if ($ttl <= 0) {
                 if (is_array($value)) {
                     $this->query('set', $key, self::TYPE_OBJ, json_encode($value));
@@ -300,7 +300,7 @@ class Redis extends AbstractRDO
     public function get($key)
     {
         $result = null;
-        if ($this->redis === null || !$key) {
+        if ($this->rdo() === null || !$key) {
             return $result;
         } else {
             if (is_string($key)) {
@@ -328,7 +328,7 @@ class Redis extends AbstractRDO
      */
     public function mSet(array $kv, int $ttl = 0)
     {
-        if ($this->redis !== null && $kv) {
+        if ($this->rdo() !== null && $kv) {
             $keys = [];
             foreach ($kv as $k => $v) {
                 if (is_array($v)) {
@@ -353,7 +353,7 @@ class Redis extends AbstractRDO
     public function mGet(array $key)
     {
         $result = [];
-        if ($this->redis === null || !$key) {
+        if ($this->rdo() === null || !$key) {
             return $result;
         } else {
             $res = $this->query('mget', $key);
@@ -375,7 +375,7 @@ class Redis extends AbstractRDO
      */
     public function hSet($hashKey, $key, $value)
     {
-        if ($this->redis !== null && $hashKey && $key) {
+        if ($this->rdo() !== null && $hashKey && $key) {
             if (is_array($value)) {
                 $this->query('hset', $hashKey, $key, self::TYPE_OBJ, json_encode($value));
             } elseif (is_string($value)) {
@@ -396,7 +396,7 @@ class Redis extends AbstractRDO
     public function hGet($key, $hashKey)
     {
         $result = null;
-        if ($this->redis === null || !$key || !$hashKey) {
+        if ($this->rdo() === null || !$key || !$hashKey) {
             return $result;
         } else {
             $res = $this->query('hget', $key, $hashKey);
@@ -415,7 +415,7 @@ class Redis extends AbstractRDO
     public function incr($key, $value = 1)
     {
         $answer = -1;
-        if ($this->redis === null || !$key) {
+        if ($this->rdo() === null || !$key) {
             return $answer;
         }
         if ($value === 1) {
@@ -434,7 +434,7 @@ class Redis extends AbstractRDO
     public function decr($key, int $value = 1)
     {
         $answer = -1;
-        if ($this->redis === null || !$key) {
+        if ($this->rdo() === null || !$key) {
             return $answer;
         }
         if ($value === 1) {
@@ -454,7 +454,7 @@ class Redis extends AbstractRDO
     public function hIncr($key, $hashKey, $value = 1)
     {
         $answer = -1;
-        if ($this->redis !== null && $key) {
+        if ($this->rdo() !== null && $key) {
             $answer = $this->query('hincrby', $key, $hashKey, $value);
         }
         return $answer;
