@@ -100,6 +100,7 @@ abstract class AbstractMDO extends AbstractDB
                 $commandStr .= $sortStr;
                 $commandStr .= $limitStr;
                 $commandStr .= $skipStr;
+                var_dump($commandStr);
                 break;
             case 'insert':
                 $data = $params[0];

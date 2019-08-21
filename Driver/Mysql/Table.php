@@ -512,7 +512,6 @@ class Table extends AbstractPDO
 
     /**
      * group by
-     * @access protected
      * @param mixed $groupBy
      * @param string | null $table
      * @return self
@@ -539,7 +538,6 @@ class Table extends AbstractPDO
 
     /**
      * order by
-     * @access protected
      * @param mixed $orderBy 支持格式 'uid asc' | array('uid asc','pid desc')
      * @param string $sort
      * @param string | null $table
@@ -580,12 +578,12 @@ class Table extends AbstractPDO
     }
 
     /**
-     * order by string 支持 field asc | field desc 形式
+     * order by string 支持 field asc,field desc 形式
      * @param $orderBy
      * @param null $table
      * @return self
      */
-    public function orderByStr($orderBy, $table = null)
+    public function orderByStr($orderBy, $table = null): self
     {
         $orderBy = explode(',', $orderBy);
         foreach ($orderBy as $o) {

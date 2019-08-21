@@ -16,6 +16,98 @@ class Collection extends AbstractMDO
     protected $db_type = Type::MONGO;
 
     /**
+     * filter -> where
+     * @var array
+     */
+    protected $filter = [];
+
+    /**
+     * @var array
+     */
+    protected $options = [];
+
+    /**
+     * sort -> orderBy
+     * @var array
+     */
+    protected $sort = [];
+
+    /**
+     * projection -> field
+     * @var array
+     */
+    protected $projection = [];
+
+
+    public function groupBy(): self
+    {
+        return $this;
+    }
+
+    /**
+     * @param $orderBy
+     * @param string $sort
+     * @return Collection
+     */
+    public function orderBy($orderBy, $sort = self::ASC): self
+    {
+        if (!$orderBy) {
+            return $this;
+        }
+        if (is_string($orderBy)) {
+            $sort = strtolower($sort);
+            $this->options['sort'][$orderBy] = $sort === self::ASC ? 1 : -1;
+        } elseif (is_array($orderBy)) {
+            $orderBy = array_filter($orderBy);
+            foreach ($orderBy as $v) {
+                $orderInfo = explode(' ', $v);
+                $orderInfo[1] = strtolower($orderInfo[1]);
+                $this->options['sort'][$orderInfo[0]] = $orderInfo[1] === self::ASC ? 1 : -1;
+                unset($orderInfo);
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * order by string 支持 field asc,field desc 形式
+     * @param $orderBy
+     * @return self
+     */
+    public function orderByStr($orderBy): self
+    {
+        $orderBy = explode(',', $orderBy);
+        foreach ($orderBy as $o) {
+            $o = explode(' ', $o);
+            $o[1] = strtolower($o[1]);
+            $this->options['sort'][$o[0]] = $o[1] === self::ASC ? 1 : -1;
+        }
+        return $this;
+    }
+
+    /**
+     * @param int $limit
+     * @return Collection
+     */
+    public function limit(int $limit): self
+    {
+        $this->options['limit'] = $limit;
+        return $this;
+    }
+
+    /**
+     * @param int $skip
+     * @return Collection
+     */
+    public function offset(int $skip): self
+    {
+        $this->options['skip'] = $skip;
+        return $this;
+    }
+
+    /** final operation */
+
+    /**
      * insert
      * @param $data
      * @return mixed
@@ -40,7 +132,6 @@ class Collection extends AbstractMDO
     /**
      * insert all
      * @return mixed
-     * @throws DatabaseException
      */
     public function tt()
     {
