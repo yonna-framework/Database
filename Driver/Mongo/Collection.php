@@ -15,29 +15,6 @@ class Collection extends AbstractMDO
 
     protected $db_type = Type::MONGO;
 
-    /**
-     * filter -> where
-     * @var array
-     */
-    protected $filter = [];
-
-    /**
-     * @var array
-     */
-    protected $options = [];
-
-    /**
-     * sort -> orderBy
-     * @var array
-     */
-    protected $sort = [];
-
-    /**
-     * projection -> field
-     * @var array
-     */
-    protected $projection = [];
-
 
     public function groupBy(): self
     {
@@ -105,6 +82,16 @@ class Collection extends AbstractMDO
         return $this;
     }
 
+    /**
+     * @param int $skip
+     * @return Collection
+     */
+    public function multi(int $skip): self
+    {
+        $this->options['skip'] = $skip;
+        return $this;
+    }
+
     /** final operation */
 
     /**
@@ -115,7 +102,8 @@ class Collection extends AbstractMDO
      */
     public function insert($data)
     {
-        return $this->query('insert', $data);
+        $this->data = $data;
+        return $this->query('insert');
     }
 
     /**
@@ -126,7 +114,8 @@ class Collection extends AbstractMDO
      */
     public function insertAll($data)
     {
-        return $this->query('insertAll', $data);
+        $this->data = $data;
+        return $this->query('insertAll');
     }
 
     /**

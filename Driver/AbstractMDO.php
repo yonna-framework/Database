@@ -6,6 +6,7 @@ use MongoDB\Driver\Query;
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\Command;
 use MongoDB\Driver\Exception\BulkWriteException;
+use Throwable;
 use Yonna\Database\Driver\Mongo\Client;
 use Yonna\Throwable\Exception;
 
@@ -16,6 +17,25 @@ abstract class AbstractMDO extends AbstractDB
      * @var string
      */
     protected $collection = null;
+
+
+    /**
+     * filter -> where
+     * @var array
+     */
+    protected $filter = [];
+
+
+    /**
+     * @var array
+     */
+    protected $options = [];
+
+    /**
+     * @var array
+     */
+    protected $data = [];
+
 
     /**
      * 架构函数 取得模板对象实例
@@ -56,11 +76,10 @@ abstract class AbstractMDO extends AbstractDB
     /**
      * 设置执行命令
      * @param $command
-     * @param mixed ...$params
      * @return mixed
      * @throws Exception\DatabaseException
      */
-    protected function query($command, ...$params)
+    protected function query($command)
     {
         $result = null;
         $commandStr = "un know command";
@@ -71,71 +90,71 @@ abstract class AbstractMDO extends AbstractDB
             $options['session'] = $session;
         }
 
-        switch ($command) {
-            case 'select':
-                $filter = $params[0];
-                $options = $params[1];
-                /*
-                $filter = ['x' => ['$gt' => 1]];
-                $options = [
-                    'projection' => ['_id' => 0],
-                    'sort' => ['x' => -1],
-                ];
-                */
-                $query = new Query($filter, $options);
-                $cursor = $this->mdo()->getManager()->executeQuery($this->name . '.' . $this->collection, $query);
-                $result = [];
-                foreach ($cursor as $doc) {
-                    var_dump($doc);
-                    $result[] = $doc;
-                }
-                $filterStr = empty($filter) ? '{}' : json_encode($filter);
-                $projectionStr = empty($options['projection']) ? '' : ',' . json_encode($options['projection']);
-                $sortStr = empty($options['sort']) ? '' : '.sort(' . json_encode($options['sort']) . ')';
-                $limitStr = empty($options['limit']) ? '' : '.limit(' . json_encode($options['limit']) . ')';
-                $skipStr = empty($options['skip']) ? '' : '.skip(' . json_encode($options['skip']) . ')';
-                $commandStr = "db.{$this->collection}find(";
-                $commandStr .= $filterStr . $projectionStr;
-                $commandStr .= ')';
-                $commandStr .= $sortStr;
-                $commandStr .= $limitStr;
-                $commandStr .= $skipStr;
-                var_dump($commandStr);
-                break;
-            case 'insert':
-                $data = $params[0];
-                $bulk = new BulkWrite();
-                try {
-                    $bulk->insert($data);
-                } catch (BulkWriteException $e) {
-                    Exception::database($e->getMessage());
-                }
-                $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $options);
-                $result = [
-                    'ids' => $result->getUpsertedIds(),
-                    'insert_count' => $result->getInsertedCount(),
-                    'bulk_count' => $bulk->count(),
-                ];
-                $commandStr = "db.{$this->collection}.insertOne(" . json_encode($params[0], JSON_UNESCAPED_UNICODE) . ')';
-                break;
-            case 'insertAll':
-                $data = $params[0];
-                $bulk = new BulkWrite();
-                try {
-                    foreach ($data as $d) {
+        try {
+            switch ($command) {
+                case 'select':
+                    /*
+                    $filter = ['x' => ['$gt' => 1]];
+                    $options = [
+                        'projection' => ['_id' => 0],
+                        'sort' => ['x' => -1],
+                    ];
+                    */
+                    $query = new Query($this->filter, $this->options);
+                    $cursor = $this->mdo()->getManager()->executeQuery($this->name . '.' . $this->collection, $query);
+                    $result = [];
+                    foreach ($cursor as $doc) {
+                        var_dump($doc);
+                        $result[] = $doc;
+                    }
+                    $filterStr = empty($this->filter) ? '{}' : json_encode($this->filter);
+                    $projectionStr = empty($this->options['projection']) ? '' : ',' . json_encode($this->options['projection']);
+                    $sortStr = empty($this->options['sort']) ? '' : '.sort(' . json_encode($this->options['sort']) . ')';
+                    $limitStr = empty($this->options['limit']) ? '' : '.limit(' . json_encode($this->options['limit']) . ')';
+                    $skipStr = empty($this->options['skip']) ? '' : '.skip(' . json_encode($this->options['skip']) . ')';
+                    $commandStr = "db.{$this->collection}find(";
+                    $commandStr .= $filterStr . $projectionStr;
+                    $commandStr .= ')';
+                    $commandStr .= $sortStr;
+                    $commandStr .= $limitStr;
+                    $commandStr .= $skipStr;
+                    var_dump($commandStr);
+                    break;
+                case 'insert':
+                    if (empty($this->data)) {
+                        return false;
+                    }
+                    $bulk = new BulkWrite();
+                    $bulk->insert($this->data);
+                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $options);
+                    $result = [
+                        'ids' => $result->getUpsertedIds(),
+                        'insert_count' => $result->getInsertedCount(),
+                        'bulk_count' => $bulk->count(),
+                    ];
+                    $commandStr = "db.{$this->collection}.insertOne(" . json_encode($this->data, JSON_UNESCAPED_UNICODE) . ')';
+                    break;
+                case 'insertAll':
+                    if (empty($this->data)) {
+                        return false;
+                    }
+                    $bulk = new BulkWrite();
+                    foreach ($this->data as $d) {
                         $bulk->insert($d);
                     }
-                } catch (BulkWriteException $e) {
-                    Exception::database($e->getMessage());
-                }
-                $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $options);
-                $result = [
-                    'ids' => $result->getUpsertedIds(),
-                    'insert_count' => $result->getInsertedCount(),
-                    'bulk_count' => $bulk->count(),
-                ];
-                $commandStr = "db.{$this->collection}.insertMany(" . json_encode($params[0], JSON_UNESCAPED_UNICODE) . ')';
-                break;
+                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $options);
+                    $result = [
+                        'ids' => $result->getUpsertedIds(),
+                        'insert_count' => $result->getInsertedCount(),
+                        'bulk_count' => $bulk->count(),
+                    ];
+                    $commandStr = "db.{$this->collection}.insertMany(" . json_encode($this->data, JSON_UNESCAPED_UNICODE) . ')';
+                    break;
+            }
+        } catch (BulkWriteException $e) {
+            Exception::database($e->getMessage());
+        } catch (\MongoDB\Driver\Exception\Exception $e) {
+            Exception::database($e->getMessage());
         }
         parent::query($commandStr);
         return $result;
