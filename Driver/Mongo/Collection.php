@@ -82,17 +82,16 @@ class Collection extends AbstractMDO
         return $this;
     }
 
-    /**
-     * @param int $skip
-     * @return Collection
-     */
-    public function multi(int $skip): self
-    {
-        $this->options['skip'] = $skip;
-        return $this;
-    }
-
     /** final operation */
+
+    /**
+     * @return mixed
+     * @throws DatabaseException
+     */
+    public function multi()
+    {
+        return $this->query('select');
+    }
 
     /**
      * insert
