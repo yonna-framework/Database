@@ -147,6 +147,8 @@ abstract class AbstractDB
                     $this->dsn = "sqlite:{$this->db_file_path}" . DIRECTORY_SEPARATOR . $this->name;
                     break;
                 case Type::MONGO:
+                    print_r($this);
+                    Exception::database("testing");
                     if ($this->account && $this->password) {
                         $this->dsn = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}/{$this->name}";
                     } else {
