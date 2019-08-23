@@ -54,7 +54,6 @@ class Transaction extends Support
         } elseif ($instance instanceof MongoClient) {
             $instance->setSession($instance->getManager()->startSession());
             $instance->getSession()->startTransaction([]);
-            print_r($instance);
         } elseif ($instance instanceof Redis) {
             $instance->multi();
         } elseif ($instance instanceof SwRedis) {
@@ -78,9 +77,6 @@ class Transaction extends Support
      */
     public static function begin()
     {
-        if (empty(self::$instances)) {
-            return;
-        }
         if (!self::in()) {
             self::$transTrace = 1;
             foreach (self::$instances as $instance) {
