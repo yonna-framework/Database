@@ -6,7 +6,6 @@ use MongoDB\Driver\Query;
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\Command;
 use MongoDB\Driver\Exception\BulkWriteException;
-use Throwable;
 use Yonna\Database\Driver\Mongo\Client;
 use Yonna\Throwable\Exception;
 

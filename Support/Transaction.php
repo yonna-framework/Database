@@ -18,6 +18,7 @@ use Yonna\Throwable\Exception;
 class Transaction extends Support
 {
 
+
     /**
      * 多重嵌套事务处理堆栈
      */
@@ -30,6 +31,37 @@ class Transaction extends Support
      */
     private static $instances = [];
 
+
+    /**
+     * @param $instance
+     */
+    private static function start($instance)
+    {
+        if ($instance instanceof PDO) {
+            if ($instance->inTransaction()) {
+                $instance->commit();
+            }
+            try {
+                $instance->beginTransaction();
+            } catch (PDOException $e) {
+                // 服务端断开时重连 1 次
+                if ($e->errorInfo[1] == 2006 || $e->errorInfo[1] == 2013) {
+                    $instance->beginTransaction();
+                } else {
+                    throw $e;
+                }
+            }
+        } elseif ($instance instanceof MongoClient) {
+            $instance->setSession($instance->getManager()->startSession());
+            $instance->getSession()->startTransaction([]);
+        } elseif ($instance instanceof Redis) {
+            $instance->multi();
+        } elseif ($instance instanceof SwRedis) {
+            $instance->multi();
+        }
+    }
+
+
     /**
      * 检测是否在一个事务内
      * @return bool
@@ -37,6 +69,22 @@ class Transaction extends Support
     public static function in()
     {
         return self::$transTrace > 0;
+    }
+
+
+    /**
+     * 开始事务
+     */
+    public static function begin()
+    {
+        if (!self::in()) {
+            self::$transTrace = 1;
+            foreach (self::$instances as $instance) {
+                self::start($instance);
+            }
+        } else {
+            self::$transTrace += 1;
+        }
     }
 
     /**
@@ -54,45 +102,10 @@ class Transaction extends Support
         }
         if (!in_array($instance, self::$instances)) {
             self::$instances[] = $instance;
-        }
-    }
-
-    /**
-     * 开始事务
-     */
-    public static function begin()
-    {
-        if (empty(self::$instances)) {
-            return;
-        }
-        if (!self::in()) {
-            self::$transTrace = 1;
-            foreach (self::$instances as $instance) {
-                if ($instance instanceof PDO) {
-                    if ($instance->inTransaction()) {
-                        $instance->commit();
-                    }
-                    try {
-                        $instance->beginTransaction();
-                    } catch (PDOException $e) {
-                        // 服务端断开时重连 1 次
-                        if ($e->errorInfo[1] == 2006 || $e->errorInfo[1] == 2013) {
-                            $instance->beginTransaction();
-                        } else {
-                            throw $e;
-                        }
-                    }
-                } elseif ($instance instanceof MongoClient) {
-                    $instance->setSession($instance->getManager()->startSession());
-                    $instance->getSession()->startTransaction([]);
-                } elseif ($instance instanceof Redis) {
-                    $instance->multi();
-                } elseif ($instance instanceof SwRedis) {
-                    $instance->multi();
-                }
+            // if in transaction, auto start when register
+            if (self::in()) {
+                self::start($instance);
             }
-        } else {
-            self::$transTrace += 1;
         }
     }
 

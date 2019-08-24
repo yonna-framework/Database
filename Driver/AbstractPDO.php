@@ -118,7 +118,7 @@ abstract class AbstractPDO extends AbstractDB
      */
     protected function getError()
     {
-        $error = $this->getError();
+        $error = parent::getError();
         if (!$error) {
             if ($this->pdo()) {
                 $errorInfo = $this->pdo()->errorInfo();
