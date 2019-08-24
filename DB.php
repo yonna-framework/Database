@@ -16,7 +16,6 @@ use Yonna\Database\Driver\Type;
 use Yonna\Database\Support\Record;
 use Yonna\Database\Support\Transaction;
 use Yonna\Throwable\Exception;
-use Yonna\Throwable\Exception\DatabaseException;
 
 /**
  * Class DB
@@ -82,7 +81,7 @@ class DB
     /**
      * trans rollback
      */
-    public function rollBackTrans()
+    public static function rollBackTrans()
     {
         Transaction::rollback();
     }
@@ -91,7 +90,7 @@ class DB
      * 检测是否在一个事务内
      * @return bool
      */
-    public function inTrans(): bool
+    public static function inTrans(): bool
     {
         return Transaction::in();
     }
