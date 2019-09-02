@@ -52,21 +52,6 @@ abstract class AbstractRDO extends AbstractDB
     }
 
     /**
-     * 如果在事务里则抛出
-     * @param $command
-     * @throws null
-     */
-    private function banReadInTransaction($command)
-    {
-        if (!in_array($command, self::READ_COMMAND)) {
-            return;
-        }
-        if (Transaction::in()) {
-            Exception::database('don\'t read redis in transaction');
-        }
-    }
-
-    /**
      * 获取 RDO
      * @return Redis | SwRedis
      */
@@ -86,7 +71,6 @@ abstract class AbstractRDO extends AbstractDB
     {
         $queryResult = null;
         $commandStr = "un know command";
-        $this->banReadInTransaction($command);
         switch ($command) {
             case 'select':
                 $index = $options[0];
