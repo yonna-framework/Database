@@ -55,9 +55,9 @@ class Transaction extends Support
             $instance->setSession($instance->getManager()->startSession());
             $instance->getSession()->startTransaction([]);
         } elseif ($instance instanceof Redis) {
-            $instance->multi();
+            $instance->multi(Redis::MULTI);
         } elseif ($instance instanceof SwRedis) {
-            $instance->multi();
+            $instance->multi(Redis::MULTI);
         }
     }
 

@@ -4,16 +4,19 @@ namespace Yonna\Database\Driver;
 
 use Redis;
 use Swoole\Coroutine\Redis as SwRedis;
+use Yonna\Database\Support\Transaction;
+use Yonna\Throwable\Exception;
 
 abstract class AbstractRDO extends AbstractDB
 {
 
     protected $db_type = Type::REDIS;
 
-
     const TYPE_OBJ = 'o';
     const TYPE_STR = 's';
     const TYPE_NUM = 'n';
+
+    const READ_COMMAND = ['time', 'dbsize', 'info', 'exists', 'get', 'mget', 'hget'];
 
     /**
      * 架构函数 取得模板对象实例
@@ -35,6 +38,35 @@ abstract class AbstractRDO extends AbstractDB
     }
 
     /**
+     * @param $key
+     */
+    private function parseKey(&$key)
+    {
+        if (is_string($key)) {
+            $key = addslashes($key);
+        } else if (is_array($key)) {
+            foreach ($key as &$k) {
+                $this->parseKey($k);
+            }
+        }
+    }
+
+    /**
+     * 如果在事务里则抛出
+     * @param $command
+     * @throws null
+     */
+    private function banReadInTransaction($command)
+    {
+        if (!in_array($command, self::READ_COMMAND)) {
+            return;
+        }
+        if (Transaction::in()) {
+            Exception::database('don\'t read redis in transaction');
+        }
+    }
+
+    /**
      * 获取 RDO
      * @return Redis | SwRedis
      */
@@ -42,6 +74,7 @@ abstract class AbstractRDO extends AbstractDB
     {
         return $this->malloc();
     }
+
 
     /**
      * 设置执行命令
@@ -51,8 +84,9 @@ abstract class AbstractRDO extends AbstractDB
      */
     protected function query($command, ...$options)
     {
-        $result = null;
+        $queryResult = null;
         $commandStr = "un know command";
+        $this->banReadInTransaction($command);
         switch ($command) {
             case 'select':
                 $index = $options[0];
@@ -60,11 +94,11 @@ abstract class AbstractRDO extends AbstractDB
                 $commandStr = "SELECT {$index}";
                 break;
             case 'time':
-                $result = $this->rdo()->time();
+                $queryResult = $this->rdo()->time();
                 $commandStr = 'TIME';
                 break;
             case 'dbsize':
-                $result = $this->rdo()->dbSize();
+                $queryResult = $this->rdo()->dbSize();
                 $commandStr = 'DBSIZE';
                 break;
             case 'bgrewriteaof':
@@ -102,47 +136,54 @@ abstract class AbstractRDO extends AbstractDB
                 $section = $options[0];
                 switch ($this->db_type) {
                     case Type::REDIS:
-                        $result = $this->rdo()->info($section);
+                        $queryResult = $this->rdo()->info($section);
                         break;
                     case Type::REDIS_CO:
-                        $result = '';
+                        $queryResult = '';
                         break;
                 }
                 $commandStr = "INFO '{$section}'";
                 break;
             case 'delete':
                 $key = $options[0];
+                $this->parseKey($key);
                 $this->rdo()->delete($key);
                 $commandStr = "DELETE '{$key}'";
                 break;
             case 'ttl':
                 $key = $options[0];
-                $result = $this->rdo()->ttl($key);
+                $this->parseKey($key);
+                $queryResult = $this->rdo()->ttl($key);
                 $commandStr = "TTL '{$key}'";
                 break;
             case 'pttl':
                 $key = $options[0];
-                $result = $this->rdo()->pttl($key);
+                $this->parseKey($key);
+                $queryResult = $this->rdo()->pttl($key);
                 $commandStr = "PTTL '{$key}'";
                 break;
             case 'exists':
                 $key = $options[0];
-                $result = $this->rdo()->exists($key) == 1 ? true : false;
+                $this->parseKey($key);
+                $queryResult = $this->rdo()->exists($key) == 1 ? true : false;
                 $commandStr = "EXISTS '{$key}'";
                 break;
             case 'expire':
                 $key = $options[0];
+                $this->parseKey($key);
                 $this->rdo()->expire($key, $options[1]);
                 $commandStr = "EXPIRE '{$key}' '{$options[1]}'";
                 break;
             case 'set':
                 $key = $options[0];
+                $this->parseKey($key);
                 $value = $options[1] . $options[2];
                 $this->rdo()->set($key, $value);
                 $commandStr = "SET '{$key}' '{$value}'";
                 break;
             case 'setex':
                 $key = $options[0];
+                $this->parseKey($key);
                 $value = $options[1] . $options[2];
                 $ttl = $options[3];
                 switch ($this->db_type) {
@@ -157,6 +198,7 @@ abstract class AbstractRDO extends AbstractDB
                 break;
             case 'psetex':
                 $key = $options[0];
+                $this->parseKey($key);
                 $value = $options[1] . $options[2];
                 $ttl = $options[3];
                 switch ($this->db_type) {
@@ -171,18 +213,20 @@ abstract class AbstractRDO extends AbstractDB
                 break;
             case 'get':
                 $key = $options[0];
-                $result = $this->rdo()->get($key);
+                $this->parseKey($key);
+                $queryResult = $this->rdo()->get($key);
                 $commandStr = "GET '{$key}'";
                 break;
             case 'mset':
                 $key = $options[0];
+                $this->parseKey($key);
                 $ttl = $options[1];
                 switch ($this->db_type) {
                     case Type::REDIS:
-                        $result = $this->rdo()->mset($key);
+                        $queryResult = $this->rdo()->mset($key);
                         break;
                     case Type::REDIS_CO:
-                        $result = $this->rdo()->mSet($key);
+                        $queryResult = $this->rdo()->mSet($key);
                         break;
                 }
                 foreach ($key as $k => $v) {
@@ -195,12 +239,13 @@ abstract class AbstractRDO extends AbstractDB
                 break;
             case 'mget':
                 $key = $options[0];
+                $this->parseKey($key);
                 switch ($this->db_type) {
                     case Type::REDIS:
-                        $result = $this->rdo()->mget($key);
+                        $queryResult = $this->rdo()->mget($key);
                         break;
                     case Type::REDIS_CO:
-                        $result = $this->rdo()->mGet($key);
+                        $queryResult = $this->rdo()->mGet($key);
                         break;
                 }
                 $key = array_map(function ($k) {
@@ -210,6 +255,7 @@ abstract class AbstractRDO extends AbstractDB
                 break;
             case 'hset':
                 $key = $options[0];
+                $this->parseKey($key);
                 $hashKey = $options[1];
                 $value = $options[2] . $options[3];
                 $this->rdo()->hSet($key, $hashKey, $value);
@@ -217,42 +263,48 @@ abstract class AbstractRDO extends AbstractDB
                 break;
             case 'hget':
                 $key = $options[0];
+                $this->parseKey($key);
                 $hashKey = $options[1];
                 $this->rdo()->hGet($key, $hashKey);
                 $commandStr = "HGET '{$key}' '$hashKey'";
                 break;
             case 'incr':
                 $key = $options[0];
-                $result = $this->rdo()->incr($key);
+                $this->parseKey($key);
+                $queryResult = $this->rdo()->incr($key);
                 $commandStr = "INCR '{$key}'";
                 break;
             case 'decr':
                 $key = $options[0];
-                $result = $this->rdo()->decr($key);
+                $this->parseKey($key);
+                $queryResult = $this->rdo()->decr($key);
                 $commandStr = "DECR '{$key}'";
                 break;
             case 'incrby':
                 $key = $options[0];
+                $this->parseKey($key);
                 $value = $options[1];
-                $result = is_int($value) ? $this->rdo()->incrBy($key, $value) : $this->rdo()->incrByFloat($key, $value);
+                $queryResult = is_int($value) ? $this->rdo()->incrBy($key, $value) : $this->rdo()->incrByFloat($key, $value);
                 $commandStr = "INCRBY '{$key}' {$value}";
                 break;
             case 'decrby':
                 $key = $options[0];
+                $this->parseKey($key);
                 $value = $options[1];
-                $result = $this->rdo()->decrBy($key, $value);
+                $queryResult = $this->rdo()->decrBy($key, $value);
                 $commandStr = "DECRBY '{$key}' {$value}";
                 break;
             case 'hincrby':
                 $key = $options[0];
+                $this->parseKey($key);
                 $hashKey = $options[1];
                 $value = $options[2];
-                $result = is_int($value) ? $this->rdo()->hIncrBy($key, $hashKey, $value) : $this->rdo()->hIncrByFloat($key, $hashKey, $value);
+                $queryResult = is_int($value) ? $this->rdo()->hIncrBy($key, $hashKey, $value) : $this->rdo()->hIncrByFloat($key, $hashKey, $value);
                 $commandStr = "HINCRBY '{$key}' {$value}";
                 break;
         }
         parent::query($commandStr);
-        return $result;
+        return $queryResult;
     }
 
 
