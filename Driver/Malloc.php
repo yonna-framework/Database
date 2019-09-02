@@ -36,6 +36,11 @@ class Malloc
         return $key;
     }
 
+    public static function tempAlloc(array $params = [])
+    {
+
+    }
+
     /**
      * malloc
      * @param array $params

@@ -51,6 +51,7 @@ abstract class AbstractRDO extends AbstractDB
         }
     }
 
+
     /**
      * 获取 RDO
      * @return Redis | SwRedis
@@ -58,6 +59,15 @@ abstract class AbstractRDO extends AbstractDB
     protected function rdo()
     {
         return $this->malloc();
+    }
+
+
+    /**
+     * 不经 malloc 新建一个临时的RDO
+     */
+    protected function temp_rdo()
+    {
+        $temp = new Redis();
     }
 
 
