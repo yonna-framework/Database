@@ -36,9 +36,108 @@ class Malloc
         return $key;
     }
 
-    public static function tempAlloc(array $params = [])
+    /**
+     * 新建分配
+     * @param array $params
+     * @return PDO|MongoClient|null
+     * @throws null
+     */
+    public static function newAllocation(array $params = [])
     {
+        $dsn = $params['dsn'];
+        $dbType = $params['db_type'];
 
+        $instance = null;
+        try {
+            switch ($dbType) {
+                case Type::MYSQL:
+                    $instance = new PDO($dsn, $params['account'], $params['password'],
+                        array(
+                            PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $params['charset'],
+                            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                            PDO::ATTR_STRINGIFY_FETCHES => false,
+                            PDO::ATTR_EMULATE_PREPARES => false,
+                        )
+                    );
+                    break;
+                case Type::PGSQL:
+                    $instance = new PDO($dsn, $params['account'], $params['password'],
+                        array(
+                            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                            PDO::ATTR_STRINGIFY_FETCHES => false,
+                            PDO::ATTR_EMULATE_PREPARES => false,
+                        )
+                    );
+                    break;
+                case Type::MSSQL:
+                    $instance = new PDO($dsn, $params['account'], $params['password'],
+                        array(
+                            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        )
+                    );
+                    break;
+                case Type::SQLITE:
+                    $instance = new PDO($dsn, null, null,
+                        array(
+                            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                            PDO::ATTR_STRINGIFY_FETCHES => false,
+                            PDO::ATTR_EMULATE_PREPARES => false,
+                        )
+                    );
+                    break;
+                case Type::MONGO:
+                    if (class_exists('\\MongoDB\Driver\Manager')) {
+                        try {
+                            $instance = new MongoClient();
+                            $instance->setManager(new MongoManager($dsn));
+                        } catch (Throwable $e) {
+                            $instance = null;
+                            Exception::database('MongoDB manager has some problem or uninstall,Stop it help you application');
+                        }
+                    }
+                    break;
+                case Type::REDIS:
+                    if (class_exists('\\Redis')) {
+                        try {
+                            $instance = new Redis();
+                        } catch (Throwable $e) {
+                            $instance = null;
+                            Exception::database('Redis has some problem or uninstall,Stop it help you application.');
+                        }
+                        $instance->connect(
+                            $params['host'],
+                            $params['port']
+                        );
+                        if ($params['password']) {
+                            $instance->auth($params['password']);
+                        }
+                    }
+                    break;
+                case Type::REDIS_CO:
+                    if (class_exists('SwRedis')) {
+                        try {
+                            $instance = new SwRedis();
+                        } catch (Throwable $e) {
+                            $instance = null;
+                            Exception::database('Swoole Redis has some problem or uninstall,Stop it help you application.');
+                        }
+                        $instance->connect(
+                            $params['host'],
+                            $params['port']
+                        );
+                        if ($params['password']) {
+                            $instance->auth($params['password']);
+                        }
+                    }
+                    break;
+                default:
+                    Exception::database("{$dbType} not support pooling yet");
+                    break;
+            }
+        } catch (Throwable $e) {
+            Exception::throw($e->getMessage());
+        }
+        return $instance;
     }
 
     /**
@@ -59,96 +158,8 @@ class Malloc
         if (!empty(static::$malloc[$key])) {
             $instance = static::$malloc[$key];
         } else {
-            try {
-                switch ($dbType) {
-                    case Type::MYSQL:
-                        $instance = new PDO($dsn, $params['account'], $params['password'],
-                            array(
-                                PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES ' . $params['charset'],
-                                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                                PDO::ATTR_STRINGIFY_FETCHES => false,
-                                PDO::ATTR_EMULATE_PREPARES => false,
-                            )
-                        );
-                        break;
-                    case Type::PGSQL:
-                        $instance = new PDO($dsn, $params['account'], $params['password'],
-                            array(
-                                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                                PDO::ATTR_STRINGIFY_FETCHES => false,
-                                PDO::ATTR_EMULATE_PREPARES => false,
-                            )
-                        );
-                        break;
-                    case Type::MSSQL:
-                        $instance = new PDO($dsn, $params['account'], $params['password'],
-                            array(
-                                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                            )
-                        );
-                        break;
-                    case Type::SQLITE:
-                        $instance = new PDO($dsn, null, null,
-                            array(
-                                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                                PDO::ATTR_STRINGIFY_FETCHES => false,
-                                PDO::ATTR_EMULATE_PREPARES => false,
-                            )
-                        );
-                        break;
-                    case Type::MONGO:
-                        if (class_exists('\\MongoDB\Driver\Manager')) {
-                            try {
-                                $instance = new MongoClient();
-                                $instance->setManager(new MongoManager($dsn));
-                            } catch (Throwable $e) {
-                                $instance = null;
-                                Exception::database('MongoDB manager has some problem or uninstall,Stop it help you application');
-                            }
-                        }
-                        break;
-                    case Type::REDIS:
-                        if (class_exists('\\Redis')) {
-                            try {
-                                $instance = new Redis();
-                            } catch (Throwable $e) {
-                                $instance = null;
-                                Exception::database('Redis has some problem or uninstall,Stop it help you application.');
-                            }
-                            $instance->connect(
-                                $params['host'],
-                                $params['port']
-                            );
-                            if ($params['password']) {
-                                $instance->auth($params['password']);
-                            }
-                        }
-                        break;
-                    case Type::REDIS_CO:
-                        if (class_exists('SwRedis')) {
-                            try {
-                                $instance = new SwRedis();
-                            } catch (Throwable $e) {
-                                $instance = null;
-                                Exception::database('Swoole Redis has some problem or uninstall,Stop it help you application.');
-                            }
-                            $instance->connect(
-                                $params['host'],
-                                $params['port']
-                            );
-                            if ($params['password']) {
-                                $instance->auth($params['password']);
-                            }
-                        }
-                        break;
-                    default:
-                        Exception::database("{$dbType} not support pooling yet");
-                        break;
-                }
-                Transaction::register($instance);
-            } catch (Throwable $e) {
-                Exception::throw($e->getMessage());
-            }
+            $instance = self::newAllocation($params);
+            Transaction::register($instance);
             static::$malloc[$key] = $instance;
         }
         return $instance;

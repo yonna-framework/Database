@@ -2,6 +2,7 @@
 
 namespace Yonna\Database\Driver;
 
+use Closure;
 use Redis;
 use Swoole\Coroutine\Redis as SwRedis;
 use Yonna\Database\Support\Transaction;
@@ -63,11 +64,18 @@ abstract class AbstractRDO extends AbstractDB
 
 
     /**
-     * 不经 malloc 新建一个临时的RDO
+     * 不经 malloc 新建一个临时请求
+     * @param Closure $call
      */
-    protected function temp_rdo()
+    protected function rdoTemp(Closure $call)
     {
-        $temp = new Redis();
+        /**
+         * @var Redis | SwRedis $rdo
+         */
+        return $this->malloc(true);
+        $call();
+        $rdo->close();
+        unset($rdo);
     }
 
 
@@ -81,6 +89,11 @@ abstract class AbstractRDO extends AbstractDB
     {
         $queryResult = null;
         $commandStr = "un know command";
+        if (in_array($command, self::READ_COMMAND)) {
+            $this->rdoTemp(function (){
+
+            });
+        }
         switch ($command) {
             case 'select':
                 $index = $options[0];

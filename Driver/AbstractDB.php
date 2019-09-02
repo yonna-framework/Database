@@ -171,10 +171,22 @@ abstract class AbstractDB
 
     /**
      * 寻连接池
+     * @param bool $force_new
      * @return mixed
      */
-    protected function malloc()
+    protected function malloc($force_new = false)
     {
+        if ($force_new) {
+            return Malloc::newAllocation([
+                'dsn' => $this->dsn(),
+                'db_type' => $this->db_type,
+                'host' => $this->host,
+                'port' => $this->port,
+                'account' => $this->account,
+                'password' => $this->password,
+                'charset' => $this->charset,
+            ]);
+        }
         return Malloc::allocation([
             'dsn' => $this->dsn(),
             'db_type' => $this->db_type,
