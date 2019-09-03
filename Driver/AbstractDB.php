@@ -142,7 +142,7 @@ abstract class AbstractDB
         if (empty($this->db_type)) {
             Exception::database('Dsn type is Empty');
         }
-        $this->inChain();
+        // $this->inChain();
         if (!$this->dsn) {
             switch ($this->db_type) {
                 case Type::MYSQL:
