@@ -83,10 +83,10 @@ abstract class AbstractMDO extends AbstractDB
         $result = null;
         $commandStr = "un know command";
 
-        $options = [];
+        $mdoOps = [];
         $session = $this->mdo()->getSession();
         if ($session) {
-            $options['session'] = $session;
+            $mdoOps['session'] = $session;
         }
 
         try {
@@ -125,7 +125,7 @@ abstract class AbstractMDO extends AbstractDB
                     }
                     $bulk = new BulkWrite();
                     $bulk->insert($this->data);
-                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $options);
+                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $mdoOps);
                     $result = [
                         'ids' => $result->getUpsertedIds(),
                         'insert_count' => $result->getInsertedCount(),
@@ -141,7 +141,7 @@ abstract class AbstractMDO extends AbstractDB
                     foreach ($this->data as $d) {
                         $bulk->insert($d);
                     }
-                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $options);
+                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $mdoOps);
                     $result = [
                         'ids' => $result->getUpsertedIds(),
                         'insert_count' => $result->getInsertedCount(),

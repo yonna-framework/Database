@@ -123,6 +123,16 @@ abstract class AbstractDB
     }
 
     /**
+     * 检查是否联动
+     * @return bool
+     */
+    protected function inChain()
+    {
+        $in_chain = strpos($this->account . $this->password . $this->host . $this->port . $this->name, ',') !== false;
+        return $in_chain;
+    }
+
+    /**
      * 获取 DSN
      * @return string
      * @throws null
@@ -132,6 +142,7 @@ abstract class AbstractDB
         if (empty($this->db_type)) {
             Exception::database('Dsn type is Empty');
         }
+        $this->inChain();
         if (!$this->dsn) {
             switch ($this->db_type) {
                 case Type::MYSQL:
@@ -147,8 +158,6 @@ abstract class AbstractDB
                     $this->dsn = "sqlite:{$this->db_file_path}" . DIRECTORY_SEPARATOR . $this->name;
                     break;
                 case Type::MONGO:
-                    print_r($this);
-                    Exception::database("testing");
                     if ($this->account && $this->password) {
                         $this->dsn = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}/{$this->name}";
                     } else {
