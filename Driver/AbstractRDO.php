@@ -2,11 +2,9 @@
 
 namespace Yonna\Database\Driver;
 
-use Closure;
 use Redis;
 use Swoole\Coroutine\Redis as SwRedis;
 use Yonna\Database\Support\Transaction;
-use Yonna\Throwable\Exception;
 
 abstract class AbstractRDO extends AbstractDB
 {
@@ -67,7 +65,7 @@ abstract class AbstractRDO extends AbstractDB
      * @param $command
      * @return bool
      */
-    protected function isNewLink($command): bool
+    protected function isReadTransaction($command): bool
     {
         return in_array($command, self::READ_COMMAND) && Transaction::in();
     }
@@ -82,7 +80,7 @@ abstract class AbstractRDO extends AbstractDB
     {
         $queryResult = null;
         $commandStr = "un know command";
-        if ($this->isNewLink($command)) {
+        if ($this->isReadTransaction($command)) {
             $rdo = $this->rdo(true);
         } else {
             $rdo = $this->rdo();
@@ -303,7 +301,7 @@ abstract class AbstractRDO extends AbstractDB
                 $commandStr = "HINCRBY '{$key}' {$value}";
                 break;
         }
-        if ($this->isNewLink($command)) {
+        if ($this->isReadTransaction($command)) {
             $rdo->close();
         }
         parent::query($commandStr);
