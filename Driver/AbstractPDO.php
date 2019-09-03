@@ -371,7 +371,7 @@ abstract class AbstractPDO extends AbstractDB
     protected function parseValue($value)
     {
         if (is_string($value)) {
-            $value = '\'' . $value . '\'';
+            $value = '\'' . addslashes($value) . '\'';
         } elseif (is_array($value)) {
             $value = array_map(array($this, 'parseValue'), $value);
         } elseif (is_bool($value)) {
