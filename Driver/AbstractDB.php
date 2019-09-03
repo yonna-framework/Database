@@ -176,18 +176,7 @@ abstract class AbstractDB
      */
     protected function malloc($force_new = false)
     {
-        if ($force_new) {
-            return Malloc::newAllocation([
-                'dsn' => $this->dsn(),
-                'db_type' => $this->db_type,
-                'host' => $this->host,
-                'port' => $this->port,
-                'account' => $this->account,
-                'password' => $this->password,
-                'charset' => $this->charset,
-            ]);
-        }
-        return Malloc::allocation([
+        $params = [
             'dsn' => $this->dsn(),
             'db_type' => $this->db_type,
             'host' => $this->host,
@@ -195,7 +184,11 @@ abstract class AbstractDB
             'account' => $this->account,
             'password' => $this->password,
             'charset' => $this->charset,
-        ]);
+        ];
+        if ($force_new) {
+            return Malloc::newAllocation($params);
+        }
+        return Malloc::allocation($params);
     }
 
     /**
