@@ -5,6 +5,7 @@ namespace Yonna\Database\Driver;
 use PDO;
 use PDOException;
 use PDOStatement;
+use Yonna\Database\Driver\Mysql\Table;
 use Yonna\Throwable\Exception;
 use Yonna\Foundation\Str;
 use Yonna\Foundation\Moment;
@@ -303,7 +304,9 @@ abstract class AbstractPDO extends AbstractDB
                     Exception::database("Field Type not support {$this->db_type} yet");
                     break;
             }
-            if (!$result) Exception::throw("{$this->db_type} get type fail");
+            if (!$result){
+                Exception::throw("{$this->db_type} get table:{$table} type fail");
+            }
             $ft = array();
             foreach ($result as $v) {
                 if ($alia && $originTable) {
@@ -1010,7 +1013,7 @@ abstract class AbstractPDO extends AbstractDB
      * @param string $operat see self
      * @param string $field
      * @param null $value
-     * @return self | Mysql\Table | Pgsql\Table | Mssql\Table | Sqlite\Table
+     * @return $this | Mysql\Table | Pgsql\Table | Mssql\Table | Sqlite\Table
      */
     protected function whereOperat($operat, $field, $value = null)
     {
@@ -1393,7 +1396,7 @@ abstract class AbstractPDO extends AbstractDB
      * 条件闭包
      * @param string $cond 'and' || 'or'
      * @param bool $isGlobal 'field or total'
-     * @return self
+     * @return $this
      */
     public function closure(string $cond = 'and', bool $isGlobal = false)
     {
@@ -1503,11 +1506,10 @@ abstract class AbstractPDO extends AbstractDB
 
     /**
      * 指定查询字段
-     * @access protected
      * @param mixed $field
      * @param string | null $table
      * @param null $function
-     * @return self
+     * @return $this
      */
     public function field($field, $table = null, $function = null)
     {
