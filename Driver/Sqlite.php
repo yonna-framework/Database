@@ -26,6 +26,15 @@ class Sqlite
     }
 
     /**
+     * 当前时间（只能用于insert 和 update）
+     * @return array
+     */
+    public function now(): array
+    {
+        return ['exp', "select datetime(CURRENT_TIMESTAMP,'localtime')"];
+    }
+
+    /**
      * 哪个表
      *
      * @param string $table

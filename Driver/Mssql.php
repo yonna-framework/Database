@@ -35,6 +35,14 @@ class Mssql
         $this->options = null;
     }
 
+    /**
+     * 当前时间（只能用于insert 和 update）
+     * @return array
+     */
+    public function now(): array
+    {
+        return ['exp', "GETDATE()"];
+    }
 
     /**
      * 哪个模式
