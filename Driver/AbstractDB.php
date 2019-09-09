@@ -258,4 +258,27 @@ abstract class AbstractDB
         return $this;
     }
 
+    /**
+     * 当前时间（只能用于insert 和 update）
+     * @return array
+     */
+    public function now(): array
+    {
+        $command = null;
+        switch ($this->db_type) {
+            case Type::MSSQL:
+                $command = "GETDATE()";
+                break;
+            case Type::SQLITE:
+                $command = "select datetime(CURRENT_TIMESTAMP,'localtime')";
+                break;
+            case Type::MYSQL:
+            case Type::PGSQL:
+            default:
+                $command = 'now()';
+                break;
+        }
+        return ['exp', $command];
+    }
+
 }

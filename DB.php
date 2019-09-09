@@ -95,6 +95,17 @@ class DB
         return Transaction::in();
     }
 
+    /**
+     * 当前时间（只能用于insert 和 update）
+     * @param string $conf
+     * @return array
+     */
+    public static function now($conf = 'default')
+    {
+        $con = self::connect($conf);
+        return $con->now();
+    }
+
     // connector
 
     /**

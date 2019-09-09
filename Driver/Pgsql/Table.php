@@ -686,15 +686,6 @@ class Table extends AbstractPDO
     /**  @tips 终结操作 */
 
     /**
-     * 当前时间（只能用于insert 和 update）
-     * @return array
-     */
-    public function now()
-    {
-        return array('exp', 'now()');
-    }
-
-    /**
      * 查找记录多条
      * @access public
      * @return mixed
