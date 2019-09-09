@@ -102,8 +102,7 @@ class DB
      */
     public static function now($conf = 'default')
     {
-        $con = self::connect($conf);
-        return $con->now();
+        return self::connect($conf)->now();
     }
 
     // connector
