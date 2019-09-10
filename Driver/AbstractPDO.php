@@ -304,7 +304,7 @@ abstract class AbstractPDO extends AbstractDB
                     Exception::database("Field Type not support {$this->db_type} yet");
                     break;
             }
-            if (!$result){
+            if (!$result) {
                 Exception::throw("{$this->db_type} get table:{$table} type fail");
             }
             $ft = array();
@@ -580,13 +580,14 @@ abstract class AbstractPDO extends AbstractDB
             if ($arr) {
                 $arr = str_replace(',,,,,', '', $arr);
                 $arr = explode(',', $arr);
+                $arr = array_filter($arr);
                 if ($this->isUseCrypto()) {
                     foreach ($arr as $ak => $a) {
                         $arr[$ak] = $this->Crypto::decrypt($a);
                     }
                 }
             } else {
-                $arr = array();
+                $arr = [];
             }
         }
         return $arr;
