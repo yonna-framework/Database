@@ -145,7 +145,7 @@ abstract class AbstractRDO extends AbstractDB
             case 'delete':
                 $key = $options[0];
                 $this->parseKey($key);
-                $rdo->delete($key);
+                $rdo->del($key);
                 $commandStr = "DELETE '{$key}'";
                 break;
             case 'ttl':

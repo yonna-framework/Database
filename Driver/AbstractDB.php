@@ -258,4 +258,42 @@ abstract class AbstractDB
         return $this;
     }
 
+    /**
+     * @param array $whereSet
+     * @param array $whereData
+     * @return $this
+     */
+    public function where(array $whereSet, array $whereData)
+    {
+        foreach ($whereSet as $target => $actions) {
+            switch ($this->db_type) {
+                case Type::MONGO:
+                    $this->whereCollection($target);
+                    break;
+                default:
+                    $this->whereTable($target);
+                    break;
+            }
+            foreach ($actions as $action) {
+                foreach ($whereSet as $field) {
+                    if (!isset($whereData[$field]) || $whereData[$field] === null) {
+                        continue;
+                    }
+                    if ($whereData[$field] !== null) {
+                        switch ($action) {
+                            case 'like':
+                                $this->$action('%' . $whereData[$field] . '%');
+                                break;
+                            default:
+                                $this->$action($whereData[$field]);
+                                break;
+                        }
+                        $this->$action($whereData[$field]);
+                    }
+                }
+            }
+        }
+        return $this;
+    }
+
 }

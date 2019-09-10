@@ -309,20 +309,6 @@ class Table extends AbstractPDO
     }
 
     /**
-     * @param array $where
-     * @return self
-     */
-    public function where(array $where)
-    {
-        if ($where) {
-            foreach ($where as $k => $v) {
-                $this->equalTo($k, $v);
-            }
-        }
-        return $this;
-    }
-
-    /**
      * json闭包器
      * @param $string
      * @param null $closure
