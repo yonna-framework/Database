@@ -658,6 +658,7 @@ abstract class AbstractPDO extends AbstractDB
                 if (is_array($v)) {
                     $result[$k] = $this->fetchFormat($v);
                 } elseif (isset($ft[$k])) {
+                    $v = stripslashes($v);
                     switch ($ft[$k]) {
                         case 'json':
                         case 'jsonb':
