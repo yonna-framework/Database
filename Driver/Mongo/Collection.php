@@ -15,7 +15,69 @@ class Collection extends AbstractMDO
 
     protected $db_type = Type::MONGO;
 
+    /**
+     * @param $field
+     * @param $value
+     * @return $this
+     */
+    public function equalTo($field, $value)
+    {
+        return $this->whereOperat(self::equalTo, $field, $value);
+    }
 
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function notEqualTo($field, $value)
+    {
+        return $this->whereOperat(self::notEqualTo, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function greaterThan($field, $value)
+    {
+        return $this->whereOperat(self::greaterThan, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function greaterThanOrEqualTo($field, $value)
+    {
+        return $this->whereOperat(self::greaterThanOrEqualTo, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function lessThan($field, $value)
+    {
+        return $this->whereOperat(self::lessThan, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function lessThanOrEqualTo($field, $value)
+    {
+        return $this->whereOperat(self::lessThanOrEqualTo, $field, $value);
+    }
+
+    /**
+     * @return Collection
+     */
     public function groupBy(): self
     {
         return $this;
