@@ -76,6 +76,92 @@ class Collection extends AbstractMDO
     }
 
     /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function like($field, $value)
+    {
+        return $this->whereOperat(self::like, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function notLike($field, $value)
+    {
+        return $this->whereOperat(self::notLike, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @return self
+     */
+    public function isNull($field)
+    {
+        return $this->whereOperat(self::isNull, $field);
+    }
+
+    /**
+     * @param $field
+     * @return self
+     */
+    public function isNotNull($field)
+    {
+        return $this->whereOperat(self::isNotNull, $field);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function between($field, $value)
+    {
+        if (is_string($value)) $value = explode(',', $value);
+        if (!is_array($value)) $value = (array)$value;
+        if (count($value) !== 2) return $this;
+        if (!$value[0]) return $this;
+        if (!$value[1]) return $this;
+        return $this->whereOperat(self::between, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function notBetween($field, $value)
+    {
+        if (is_string($value)) $value = explode(',', $value);
+        if (!is_array($value)) $value = (array)$value;
+        if (count($value) !== 2) return $this;
+        return $this->whereOperat(self::notBetween, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function in($field, $value)
+    {
+        return $this->whereOperat(self::in, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function notIn($field, $value)
+    {
+        return $this->whereOperat(self::notIn, $field, $value);
+    }
+
+    /**
      * @return Collection
      */
     public function groupBy(): self
