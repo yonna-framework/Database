@@ -2,7 +2,6 @@
 
 namespace Yonna\Database\Driver;
 
-use Exception;
 use Yonna\Database\Driver\Mongo\Collection;
 
 class Mongo
