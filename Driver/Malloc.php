@@ -148,7 +148,6 @@ class Malloc
      */
     public static function allocation(array $params = [])
     {
-
         $dsn = $params['dsn'];
         $dbType = $params['db_type'];
 

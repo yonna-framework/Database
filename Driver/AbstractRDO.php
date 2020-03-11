@@ -55,6 +55,7 @@ abstract class AbstractRDO extends AbstractDB
      * 获取 RDO
      * @param bool $force_new
      * @return Redis | SwRedis
+     * @throws null
      */
     protected function rdo($force_new = false)
     {
@@ -263,7 +264,7 @@ abstract class AbstractRDO extends AbstractDB
                 $key = $options[0];
                 $this->parseKey($key);
                 $hashKey = $options[1];
-                $rdo->hGet($key, $hashKey);
+                $queryResult = $rdo->hGet($key, $hashKey);
                 $commandStr = "HGET '{$key}' '$hashKey'";
                 break;
             case 'incr':

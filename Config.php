@@ -43,7 +43,6 @@ class Config
         $password = $setting['password'] ?? null;
         $name = $setting['name'] ?? null;
         $charset = $setting['charset'] ?? null;
-        $db_file_path = $setting['db_file_path'] ?? null;
         $project_key = isset($setting['project_key']) ? strtolower($setting['project_key']) : null;
         $auto_cache = isset($setting['auto_cache']) ? strtolower($setting['auto_cache']) : false;
         $auto_crypto = isset($setting['auto_crypto']) ? strtolower($setting['auto_crypto']) : false;
@@ -71,8 +70,8 @@ class Config
             }
         }
         if ($type === Type::SQLITE) {
-            if (empty($db_file_path)) {
-                throw new Exception('no db file path');
+            if (empty($host)) {
+                throw new Exception('no host file');
             }
         }
         // auto_cache
@@ -107,7 +106,6 @@ class Config
             'password' => $password,
             'name' => $name,
             'charset' => $charset,
-            'db_file_path' => $db_file_path,
             'project_key' => $project_key,
             'auto_cache' => $auto_cache,
             'auto_crypto' => $auto_crypto,

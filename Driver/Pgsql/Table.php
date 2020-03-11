@@ -13,6 +13,8 @@ use Yonna\Throwable\Exception;
 class Table extends AbstractPDO
 {
 
+    protected $db_type = Type::PGSQL;
+
     /**
      * Table constructor.
      * @param array $setting
@@ -21,7 +23,6 @@ class Table extends AbstractPDO
     public function __construct(array $setting, array $options)
     {
         parent::__construct($setting);
-        $this->db_type = Type::PGSQL;
         $this->charset = $setting['charset'] ?: 'utf8';
         $this->selectSql = 'SELECT%DISTINCT% %FIELD% FROM %SCHEMAS%.%TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%LIMIT% %UNION%%LOCK%%COMMENT%';
         $this->options = $options;

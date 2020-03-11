@@ -13,6 +13,8 @@ use Yonna\Throwable\Exception;
 class Table extends AbstractPDO
 {
 
+    protected $db_type = Type::MSSQL;
+
     /**
      * 构造方法
      *
@@ -23,7 +25,6 @@ class Table extends AbstractPDO
     {
         parent::__construct($setting);
         $this->charset = $setting['charset'] ?: 'gbk';
-        $this->db_type = Type::MSSQL;
         $this->selectSql = 'SELECT%LIMIT%%DISTINCT% %FIELD% FROM %SCHEMAS%.%TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%OFFSET%%UNION%%LOCK%%COMMENT%';
         $this->options = $options;
     }

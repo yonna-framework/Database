@@ -5,7 +5,6 @@ namespace Yonna\Database\Driver;
 use PDO;
 use PDOException;
 use PDOStatement;
-use Yonna\Database\Driver\Mysql\Table;
 use Yonna\Throwable\Exception;
 use Yonna\Foundation\Str;
 use Yonna\Foundation\Moment;
@@ -134,7 +133,7 @@ abstract class AbstractPDO extends AbstractDB
      * 检查数据库
      * @param $type
      * @param $msg
-     * @return mixed
+     * @throws Exception\DatabaseException
      */
     protected function askType($type, $msg)
     {
@@ -142,7 +141,6 @@ abstract class AbstractPDO extends AbstractDB
             Exception::database("{$msg} not support {$this->db_type} yet");
         }
     }
-
 
     /**
      * 获取 PDO
@@ -154,6 +152,7 @@ abstract class AbstractPDO extends AbstractDB
     }
 
     /**
+     *
      * 关闭 PDOState
      */
     protected function pdoFree()
@@ -195,7 +194,7 @@ abstract class AbstractPDO extends AbstractDB
         } catch (PDOException $e) {
             // 服务端断开时重连一次
             if ($e->errorInfo[1] == 2006 || $e->errorInfo[1] == 2013) {
-                $this->pdoClose();
+                $this->pdoFree();
                 try {
                     $PDOStatement = $this->pdo()->prepare($query);
                     if (!empty($this->parameters)) {
@@ -440,7 +439,7 @@ abstract class AbstractPDO extends AbstractDB
             case 'json':
             case 'jsonb':
                 $val = json_encode($val);
-                if ($this->isUseCrypto()) {
+                if ($this->isCrypto()) {
                     $json = array('crypto' => $this->Crypto::encrypt($val));
                     $val = json_encode($json);
                 }
@@ -472,7 +471,7 @@ abstract class AbstractPDO extends AbstractDB
             case 'nvarchar':
             case 'ntext':
                 $val = trim($val);
-                if ($this->isUseCrypto()) {
+                if ($this->isCrypto()) {
                     $val = $this->Crypto::encrypt($val);
                 }
                 break;
@@ -530,7 +529,7 @@ abstract class AbstractPDO extends AbstractDB
             case 'nvarchar':
             case 'ntext':
                 $val = trim($val);
-                if ($this->isUseCrypto()) {
+                if ($this->isCrypto()) {
                     $val = $this->Crypto::encrypt($val);
                 }
                 break;
@@ -581,7 +580,7 @@ abstract class AbstractPDO extends AbstractDB
                 $arr = str_replace(',,,,,', '', $arr);
                 $arr = explode(',', $arr);
                 $arr = array_filter($arr);
-                if ($this->isUseCrypto()) {
+                if ($this->isCrypto()) {
                     foreach ($arr as $ak => $a) {
                         $arr[$ak] = $this->Crypto::decrypt($a);
                     }
@@ -663,7 +662,7 @@ abstract class AbstractPDO extends AbstractDB
                         case 'json':
                         case 'jsonb':
                             $result[$k] = json_decode($v, true);
-                            if ($this->isUseCrypto()) {
+                            if ($this->isCrypto()) {
                                 $crypto = $result[$k]['crypto'] ?? '';
                                 $crypto = $this->Crypto::decrypt($crypto);
                                 $result[$k] = json_decode($crypto, true);
@@ -685,7 +684,7 @@ abstract class AbstractPDO extends AbstractDB
                         case 'char':
                         case 'varchar':
                         case 'text':
-                            if (strpos($v, ',,,,,') === false && $this->isUseCrypto()) {
+                            if (strpos($v, ',,,,,') === false && $this->isCrypto()) {
                                 $result[$k] = $this->Crypto::decrypt($v);
                             }
                             break;
@@ -693,7 +692,7 @@ abstract class AbstractPDO extends AbstractDB
                             if ($this->db_type === Type::PGSQL) {
                                 if (substr($ft[$k], -2) === '[]') {
                                     $result[$k] = json_decode($v, true);
-                                    if ($this->isUseCrypto()) {
+                                    if ($this->isCrypto()) {
                                         $crypto = $result[$k]['crypto'] ?? '';
                                         $crypto = $this->Crypto::decrypt($crypto);
                                         $result[$k] = json_decode($crypto, true);
@@ -1104,7 +1103,7 @@ abstract class AbstractPDO extends AbstractDB
                             $innerSql .= " <= {$value}";
                             break;
                         case self::like:
-                            if ($this->isUseCrypto()) {
+                            if ($this->isCrypto()) {
                                 $likeO = '';
                                 $likeE = '';
                                 $vspllit = str_split($v['value']);
@@ -1126,7 +1125,7 @@ abstract class AbstractPDO extends AbstractDB
                             if (substr($ft_type, -2) === '[]') {
                                 $innerSql = "array_to_string({$innerSql},'')";
                             }
-                            if ($this->isUseCrypto()) {
+                            if ($this->isCrypto()) {
                                 $likeO = '';
                                 $likeE = '';
                                 $vspllit = str_split($v['value']);
@@ -1447,10 +1446,10 @@ abstract class AbstractPDO extends AbstractDB
             Exception::database('lose table');
         }
         $rawStatement = explode(" ", $query);
-        $statement = strtolower(trim($rawStatement[0]));
+        $this->setState(strtolower(trim($rawStatement[0])));
         $result = null;
         //read model,check cache
-        if ($statement === 'select' || $statement === 'show') {
+        if ($this->statement === 'select' || $this->statement === 'show') {
             if ($this->auto_cache === Cache::FOREVER) {
                 $result = Cache::uGet($table, $query);
             } elseif (is_numeric($this->auto_cache)) {
@@ -1462,7 +1461,7 @@ abstract class AbstractPDO extends AbstractDB
             if (!$this->PDOStatement = $this->execute($query)) {
                 Exception::database($this->getError());
             }
-            if ($statement === 'select' || $statement === 'show') {
+            if ($this->statetype === 'read') {
                 $result = $this->PDOStatement->fetchAll($fetchMode);
                 $result = $this->fetchFormat($result);
                 if ($this->auto_cache === Cache::FOREVER) {
@@ -1470,21 +1469,14 @@ abstract class AbstractPDO extends AbstractDB
                 } elseif (is_numeric($this->auto_cache)) {
                     Cache::set($table . '::' . $query, $result, (int)$this->auto_cache);
                 }
-            } elseif ($statement === 'update' || $statement === 'delete') {
-                if ($this->auto_cache === 'forever') {
-                    Cache::clear($table);
-                }
-                $result = $this->PDOStatement->rowCount();
-            } elseif ($statement === 'insert') {
+            } elseif ($this->statetype === 'write') {
                 if ($this->auto_cache === Cache::FOREVER) {
                     Cache::clear($table);
                 }
                 $result = $this->PDOStatement->rowCount();
-            } else {
-                $result = null;
             }
+            parent::query($query);
         }
-        parent::query($query);
         return $result;
     }
 

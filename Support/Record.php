@@ -23,9 +23,9 @@ class Record extends Support
 
     /**
      * 时间基准
-     * @var array
+     * @var float|int
      */
-    private static $record_time = null;
+    private static $record_time = 0;
 
     /**
      * get a new time

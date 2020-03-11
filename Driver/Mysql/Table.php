@@ -7,21 +7,24 @@
 namespace Yonna\Database\Driver\Mysql;
 
 use Yonna\Database\Driver\AbstractPDO;
+use Yonna\Database\Driver\Malloc;
 use Yonna\Database\Driver\Type;
 use Yonna\Throwable\Exception;
 
 class Table extends AbstractPDO
 {
 
+    protected $db_type = Type::MYSQL;
+
     /**
      * Table constructor.
      * @param array $setting
      * @param array $options
+     * @throws null
      */
     public function __construct(array $setting, array $options)
     {
         parent::__construct($setting);
-        $this->db_type = Type::MYSQL;
         $this->charset = $setting['charset'] ?: 'utf8mb4';
         $this->selectSql = 'SELECT%DISTINCT% %FIELD% FROM %TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%LIMIT% %UNION%%LOCK%%COMMENT%';
         $this->options = $options;

@@ -15,7 +15,7 @@ abstract class AbstractDB
 
     /**
      * 数据库驱动类型
-     * @var null
+     * @var string|null
      */
     protected $db_type = null;
 
@@ -25,18 +25,33 @@ abstract class AbstractDB
      */
     protected $project_key = null;
 
-    protected $host = null;
-    protected $port = null;
-    protected $account = null;
-    protected $password = null;
+    protected $master = [];
+    protected $slave = [];
+    protected $host = [];
+    protected $port = [];
+    protected $account = [];
+    protected $password = [];
     protected $name = null;
     protected $charset = null;
-    protected $db_file_path = null;
     protected $auto_cache = null;
     protected $auto_crypto = null;
     protected $crypto_type = null;
     protected $crypto_secret = null;
     protected $crypto_iv = null;
+
+    /**
+     * action statement select|show|update|insert|delete
+     *
+     * @var $statement
+     */
+    protected $statement;
+
+    /**
+     * action statetype read|write
+     *
+     * @var $statetype
+     */
+    protected $statetype;
 
     /**
      * where条件对象，实现闭包
@@ -50,13 +65,6 @@ abstract class AbstractDB
      * @var string
      */
     private $error = null;
-
-    /**
-     * dsn 链接串
-     *
-     * @var string
-     */
-    private $dsn = null;
 
     /**
      * 是否不执行命令直接返回命令串
@@ -75,32 +83,120 @@ abstract class AbstractDB
      * 是否对内容加密
      * @var bool
      */
-    private $use_crypto = false;
+    private $is_crypto = false;
+
+    /**
+     * 最后请求的链接
+     * @var null
+     */
+    private $last_connection = null;
 
     /**
      * 构造方法
      *
      * @param array $setting
+     * @throws null
      */
     public function __construct(array $setting)
     {
         $this->project_key = $setting['project_key'] ?? null;
-        $this->host = $setting['host'] ?? null;
-        $this->port = $setting['port'] ?? null;
-        $this->account = $setting['account'] ?? null;
-        $this->password = $setting['password'] ?? null;
+        $this->host = $setting['host'] ? explode(',', $setting['host']) : [];
+        $this->port = $setting['port'] ? explode(',', $setting['port']) : [];
+        $this->account = $setting['account'] ? explode(',', $setting['account']) : [];
+        $this->password = $setting['password'] ? explode(',', $setting['password']) : [];
         $this->name = $setting['name'] ?? null;
         $this->charset = $setting['charset'] ?? 'utf8';
-        $this->db_file_path = $setting['db_file_path'] ?? null;
         $this->auto_cache = $setting['auto_cache'] ?? false;
         $this->auto_crypto = $setting['auto_crypto'] ?? false;
         $this->crypto_type = $setting['crypto_type'] ?? null;
         $this->crypto_secret = $setting['crypto_secret'] ?? null;
         $this->crypto_iv = $setting['crypto_iv'] ?? null;
-        //
         $this->fetchQuery = false;
         $this->Crypto = new Crypto($this->crypto_type, $this->crypto_secret, $this->crypto_iv);
+        $this->analysis();
         return $this;
+    }
+
+    /**
+     * 分析 DSN，设定 master-slave
+     * @throws null
+     */
+    private function analysis()
+    {
+        if (empty($this->db_type)) {
+            Exception::database('Dsn type is Empty');
+        }
+        // 空数据处理
+        for ($i = 0; $i < count($this->host); $i++) {
+            if (empty($this->host[$i])) $this->host[$i] = '';
+            if (empty($this->port[$i])) $this->port[$i] = '';
+            if (empty($this->account[$i])) $this->account[$i] = '';
+            if (empty($this->password[$i])) $this->password[$i] = '';
+        }
+        // 检查服务器属性
+        $this->master = [];
+        $this->slave = [];
+        $dsn = null;
+        for ($i = 0; $i < count($this->host); $i++) {
+            $conf = [
+                'dsn' => $dsn,
+                'db_type' => $this->db_type,
+                'host' => $this->host[$i],
+                'port' => $this->port[$i],
+                'account' => $this->account[$i],
+                'password' => $this->password[$i],
+                'charset' => $this->charset,
+            ];
+            switch ($this->db_type) {
+                case Type::MYSQL:
+                    $conf['dsn'] = "mysql:dbname={$this->name};host={$this->host[$i]};port={$this->port[$i]}";
+                    $prepare = Malloc::allocation($conf)->prepare("show slave status");
+                    $res = $prepare->execute();
+                    if ($res) {
+                        $slaveStatus = $prepare->fetchAll(\PDO::FETCH_ASSOC);
+                        if (!$slaveStatus) {
+                            if ($this->master) {
+                                Exception::database('master should unique');
+                            }
+                            $this->master = $conf;
+                        } else {
+                            $this->slave[] = $conf;
+                        }
+                    }
+                    break;
+                case Type::PGSQL:
+                    $conf['dsn'] = "pgsql:dbname={$this->name};host={$this->host[$i]};port={$this->port[$i]}";
+                    $this->master = $conf;
+                    break;
+                case Type::MSSQL:
+                    $conf['dsn'] = "sqlsrv:Server={$this->host[$i]},{$this->port[$i]};src={$this->name}";
+                    $this->master = $conf;
+                    break;
+                case Type::SQLITE:
+                    $conf['dsn'] = "sqlite:{$this->host[$i]}" . DIRECTORY_SEPARATOR . $this->name;
+                    $this->master = $conf;
+                    break;
+                case Type::MONGO:
+                    if ($this->account && $this->password) {
+                        $conf['dsn'] = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}/{$this->name}";
+                    } else {
+                        $conf['dsn'] = "mongodb://{$this->host}:{$this->port}/{$this->name}";
+                    }
+                    $this->master = $conf;
+                    break;
+                case Type::REDIS:
+                    $conf['dsn'] = "redis://{$this->password[$i]}@{$this->host[$i]}:{$this->port[$i]}";
+                    $this->master = $conf;
+                    break;
+                case Type::REDIS_CO:
+                    $conf['dsn'] = "redisco://{$this->password[$i]}@{$this->host[$i]}:{$this->port[$i]}";
+                    $this->master = $conf;
+                    break;
+                default:
+                    Exception::database("{$this->db_type} type is not supported for the time being");
+                    break;
+            }
+        }
     }
 
     /**
@@ -117,83 +213,58 @@ abstract class AbstractDB
      */
     protected function resetAll()
     {
-        $this->use_crypto = false;
+        $this->is_crypto = false;
         $this->error = null;
         $this->where = array();
     }
 
     /**
-     * 检查是否联动
-     * @return bool
+     * 设置执行状态
+     * @param $statement
+     * @return $this
+     * @throws Exception\DatabaseException
      */
-    protected function inChain()
+    protected function setState($statement)
     {
-        $in_chain = strpos($this->account . $this->password . $this->host . $this->port . $this->name, ',') !== false;
-        return $in_chain;
+        $this->statement = $statement;
+        if ($this->statement === "select" || $this->statement === "show") {
+            $this->statetype = "read";
+        } elseif ($this->statement === 'update'
+            || $this->statement === 'delete'
+            || $this->statement === 'insert'
+            || $this->statement == 'truncate') {
+            $this->statetype = "write";
+        } else {
+            Exception::database('Statement Error: ' . $statement);
+        }
+        return $this;
     }
 
     /**
-     * 获取 DSN
-     * @return string
-     * @throws null
+     * 是否单例数据库服务
+     * @return bool
      */
-    protected function dsn()
+    protected function isSingleServer()
     {
-        if (empty($this->db_type)) {
-            Exception::database('Dsn type is Empty');
-        }
-        // $this->inChain();
-        if (!$this->dsn) {
-            switch ($this->db_type) {
-                case Type::MYSQL:
-                    $this->dsn = "mysql:dbname={$this->name};host={$this->host};port={$this->port}";
-                    break;
-                case Type::PGSQL:
-                    $this->dsn = "pgsql:dbname={$this->name};host={$this->host};port={$this->port}";
-                    break;
-                case Type::MSSQL:
-                    $this->dsn = "sqlsrv:Server={$this->host},{$this->port};src={$this->name}";
-                    break;
-                case Type::SQLITE:
-                    $this->dsn = "sqlite:{$this->db_file_path}" . DIRECTORY_SEPARATOR . $this->name;
-                    break;
-                case Type::MONGO:
-                    if ($this->account && $this->password) {
-                        $this->dsn = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}/{$this->name}";
-                    } else {
-                        $this->dsn = "mongodb://{$this->host}:{$this->port}/{$this->name}";
-                    }
-                    break;
-                case Type::REDIS:
-                    $this->dsn = "redis://{$this->password}@{$this->host}:{$this->port}";
-                    break;
-                case Type::REDIS_CO:
-                    $this->dsn = "redisco://{$this->password}@{$this->host}:{$this->port}";
-                    break;
-                default:
-                    Exception::database("{$this->db_type} type is not supported for the time being");
-                    break;
-            }
-        }
-        return $this->dsn;
+        return count($this->slave) === 0;
     }
 
     /**
      * 寻连接池
      * @param bool $force_new
      * @return mixed
+     * @throws null
      */
-    protected function malloc($force_new = false)
+    protected function malloc(bool $force_new = false)
     {
-        $params = [
-            'dsn' => $this->dsn(),
-            'db_type' => $this->db_type,
-            'host' => $this->host,
-            'port' => $this->port,
-            'account' => $this->account,
-            'password' => $this->password,
-            'charset' => $this->charset,
-        ];
+        if ($this->statetype === "write" or !$this->slave) {
+            $params = $this->master;
+        } else if (count($this->slave) === 1) {
+            $params = $this->slave[0];
+        } else {
+            $params = $this->slave[random_int(0, count($this->slave) - 1)];
+        }
+        $this->last_connection = $params['dsn'] ?? null;
         if ($force_new) {
             return Malloc::newAllocation($params);
         }
@@ -224,19 +295,19 @@ abstract class AbstractDB
     /**
      * @return bool
      */
-    protected function isUseCrypto(): bool
+    protected function isCrypto(): bool
     {
-        return $this->use_crypto;
+        return $this->is_crypto;
     }
 
     /**
      * @tips 一旦设为加密则只能全字而无法模糊匹配
-     * @param bool $use_crypto
+     * @param bool $is_crypto
      * @return AbstractDB|Mysql|Pgsql|Mssql|Sqlite|Mongo|Redis
      */
-    protected function setUseCrypto(bool $use_crypto)
+    protected function enCrypto(bool $is_crypto)
     {
-        $this->use_crypto = $use_crypto;
+        $this->is_crypto = $is_crypto;
         return $this;
     }
 
@@ -246,7 +317,7 @@ abstract class AbstractDB
      */
     protected function query(string $query)
     {
-        Record::add($this->db_type, $this->dsn(), $query);
+        Record::add($this->db_type, $this->last_connection, $query);
     }
 
     /**
