@@ -42,6 +42,7 @@ class Config
         $account = $setting['account'] ?? null;
         $password = $setting['password'] ?? null;
         $name = $setting['name'] ?? null;
+        $replica = $setting['replica'] ?? null;
         $charset = $setting['charset'] ?? null;
         $project_key = isset($setting['project_key']) ? strtolower($setting['project_key']) : null;
         $auto_cache = isset($setting['auto_cache']) ? strtolower($setting['auto_cache']) : false;
@@ -105,6 +106,7 @@ class Config
             'account' => $account,
             'password' => $password,
             'name' => $name,
+            'replica' => $replica,
             'charset' => $charset,
             'project_key' => $project_key,
             'auto_cache' => $auto_cache,

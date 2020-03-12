@@ -52,12 +52,14 @@ class Transaction extends Support
                 }
             }
         } elseif ($instance instanceof MongoClient) {
-            $instance->setSession($instance->getManager()->startSession());
-            $instance->getSession()->startTransaction([]);
+            if ($instance->isReplica()) {
+                $instance->setSession($instance->getManager()->startSession());
+                $instance->getSession()->startTransaction([]);
+            }
         } elseif ($instance instanceof Redis) {
             $instance->multi(Redis::MULTI);
         } elseif ($instance instanceof SwRedis) {
-            $instance->multi(Redis::MULTI);
+            $instance->multi();
         }
     }
 
@@ -125,9 +127,11 @@ class Transaction extends Support
                 if ($instance instanceof PDO) {
                     $instance->commit();
                 } elseif ($instance instanceof MongoClient) {
-                    $instance->getSession()->commitTransaction();
-                    $instance->getSession()->endSession();
-                    $instance->setSession(null);
+                    if ($instance->isReplica()) {
+                        $instance->getSession()->commitTransaction();
+                        $instance->getSession()->endSession();
+                        $instance->setSession(null);
+                    }
                 } elseif ($instance instanceof Redis) {
                     $instance->exec();
                 } elseif ($instance instanceof SwRedis) {
@@ -155,9 +159,11 @@ class Transaction extends Support
                         $instance->rollBack();
                     }
                 } elseif ($instance instanceof MongoClient) {
-                    $instance->getSession()->abortTransaction();
-                    $instance->getSession()->endSession();
-                    $instance->setSession(null);
+                    if ($instance->isReplica()) {
+                        $instance->getSession()->abortTransaction();
+                        $instance->getSession()->endSession();
+                        $instance->setSession(null);
+                    }
                 } elseif ($instance instanceof Redis) {
                     $instance->discard();
                 } elseif ($instance instanceof SwRedis) {

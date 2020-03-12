@@ -86,14 +86,18 @@ class Malloc
                     );
                     break;
                 case Type::MONGO:
-                    if (class_exists('\\MongoDB\Driver\Manager')) {
+                    if (class_exists('\\MongoDB\\Driver\\Manager')) {
                         try {
                             $instance = new MongoClient();
                             $instance->setManager(new MongoManager($dsn));
+                            $instance->setReplica(strpos($dsn, 'replicaSet') !== false);
                         } catch (Throwable $e) {
                             $instance = null;
-                            Exception::database('MongoDB manager has some problem or uninstall,Stop it help you application');
+                            Exception::origin($e);
                         }
+                    } else {
+                        $instance = null;
+                        Exception::database('MongoDB manager has some problem or uninstall,Stop it help you application');
                     }
                     break;
                 case Type::REDIS:
@@ -143,7 +147,7 @@ class Malloc
     /**
      * malloc
      * @param array $params
-     * @return PDO|Redis|MongoManager
+     * @return PDO|Redis|MongoClient
      * @throws null
      */
     public static function allocation(array $params = [])

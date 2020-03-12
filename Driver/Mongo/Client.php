@@ -15,6 +15,8 @@ class Client
 
     private $session = null;
 
+    private $replica = false;
+
     /**
      * @return Manager | null
      */
@@ -47,5 +49,20 @@ class Client
         $this->session = $session;
     }
 
+    /**
+     * @return bool
+     */
+    public function isReplica(): bool
+    {
+        return $this->replica;
+    }
+
+    /**
+     * @param bool $replica
+     */
+    public function setReplica(bool $replica): void
+    {
+        $this->replica = $replica;
+    }
 
 }

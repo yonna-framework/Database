@@ -32,6 +32,7 @@ abstract class AbstractDB
     protected $account = [];
     protected $password = [];
     protected $name = null;
+    protected $replica = null;
     protected $charset = null;
     protected $auto_cache = null;
     protected $auto_crypto = null;
@@ -105,6 +106,7 @@ abstract class AbstractDB
         $this->account = $setting['account'] ? explode(',', $setting['account']) : [];
         $this->password = $setting['password'] ? explode(',', $setting['password']) : [];
         $this->name = $setting['name'] ?? null;
+        $this->replica = $setting['replica'] ?? null;
         $this->charset = $setting['charset'] ?? 'utf8';
         $this->auto_cache = $setting['auto_cache'] ?? false;
         $this->auto_crypto = $setting['auto_crypto'] ?? false;
@@ -203,19 +205,35 @@ abstract class AbstractDB
                     break;
                 case Type::MONGO:
                     if ($this->account && $this->password) {
-                        $conf['dsn'] = "mongodb://{$this->account}:{$this->password}@{$this->host}:{$this->port}/{$this->name}";
+                        $conf['dsn'] = "mongodb://{$this->account[$i]}:{$this->password[$i]}@{$this->host[$i]}:{$this->port[$i]}/{$this->name}";
                     } else {
-                        $conf['dsn'] = "mongodb://{$this->host}:{$this->port}/{$this->name}";
+                        $conf['dsn'] = "mongodb://{$this->host[$i]}:{$this->port[$i]}/{$this->name}";
                     }
-                    $this->master = $conf;
+                    $manager = Malloc::allocation($conf)->getManager();
+                    $command = new \MongoDB\Driver\Command(['ping' => 1]);
+                    $manager->executeCommand($this->name, $command);
+                    $servers = $manager->getServers();
+                    /**
+                     * @var $server \MongoDB\Driver\Server
+                     */
+                    $server = reset($servers);
+                    if ($server->isPrimary() === true) {
+                        $this->master = $conf;
+                    } elseif ($server->isSecondary() === true) {
+                        $this->slave[] = $conf;
+                    }
                     break;
                 case Type::REDIS:
-                    $conf['dsn'] = "redis://{$this->password[$i]}@{$this->host[$i]}:{$this->port[$i]}";
-                    $this->master = $conf;
+                    if (!$this->master) {
+                        $conf['dsn'] = "redis://{$this->password[$i]}@{$this->host[$i]}:{$this->port[$i]}";
+                        $this->master = $conf;
+                    }
                     break;
                 case Type::REDIS_CO:
-                    $conf['dsn'] = "redisco://{$this->password[$i]}@{$this->host[$i]}:{$this->port[$i]}";
-                    $this->master = $conf;
+                    if (!$this->master) {
+                        $conf['dsn'] = "redisco://{$this->password[$i]}@{$this->host[$i]}:{$this->port[$i]}";
+                        $this->master = $conf;
+                    }
                     break;
                 default:
                     Exception::database("{$this->db_type} type is not supported for the time being");
@@ -282,12 +300,44 @@ abstract class AbstractDB
      */
     protected function malloc(bool $force_new = false)
     {
-        if ($this->statetype === "write" or !$this->slave) {
-            $params = $this->master;
-        } else if (count($this->slave) === 1) {
-            $params = $this->slave[0];
-        } else {
-            $params = $this->slave[random_int(0, count($this->slave) - 1)];
+        switch ($this->db_type) {
+            case TYPE::MYSQL:
+            case TYPE::PGSQL:
+            case TYPE::MSSQL:
+            case TYPE::SQLITE:
+                // pdo的单例/主从
+                if ($this->statetype === "write" or $this->isSingleServer()) {
+                    $params = $this->master;
+                } else if (count($this->slave) === 1) {
+                    $params = $this->slave[0];
+                } else {
+                    $params = $this->slave[random_int(0, count($this->slave) - 1)];
+                }
+                break;
+            case TYPE::MONGO:
+                // mongo的单例/副本集
+                if ($this->isSingleServer()) {
+                    $params = $this->master;
+                } else {
+                    if (!$this->replica) {
+                        Exception::database('Mongo replicaSet not replica config');
+                    }
+                    $params = $this->master;
+                    $params['dsn'] = "mongodb://{$this->master['account']}:{$this->master['password']}@";
+                    $params['dsn'] .= "{$this->master['host']}:{$this->master['port']}";
+                    foreach ($this->slave as $k => $v) {
+                        $params['dsn'] .= ",{$v['host']}:{$v['port']}";
+                        $params['host'] .= ",{$v['host']}";
+                        $params['port'] .= ",{$v['port']}";
+                    }
+                    $params['dsn'] .= "/{$this->name}?replicaSet=" . $this->replica;
+                }
+                break;
+            case TYPE::REDIS:
+            case TYPE::REDIS_CO:
+                // redis暂不支持只选用master
+                $params = $this->master;
+                break;
         }
         $this->last_connection = $params['dsn'] ?? null;
         if ($force_new) {
