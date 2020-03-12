@@ -149,6 +149,7 @@ abstract class AbstractDB
             ];
             switch ($this->db_type) {
                 case Type::MYSQL:
+                    // mysql自动根据关系设定主从库
                     $conf['dsn'] = "mysql:dbname={$this->name};host={$this->host[$i]};port={$this->port[$i]}";
                     $prepare = Malloc::allocation($conf)->prepare("show slave status");
                     $res = $prepare->execute();
@@ -165,16 +166,40 @@ abstract class AbstractDB
                     }
                     break;
                 case Type::PGSQL:
+                    // pgsql自动根据关系设定主从库
                     $conf['dsn'] = "pgsql:dbname={$this->name};host={$this->host[$i]};port={$this->port[$i]}";
-                    $this->master = $conf;
+                    $prepare = Malloc::allocation($conf)->prepare("SELECT pg_is_in_recovery()");
+                    $res = $prepare->execute();
+                    if ($res) {
+                        $pgStatus = $prepare->fetch(\PDO::FETCH_ASSOC);
+                        $pgIsInRecovery = $pgStatus['pg_is_in_recovery'] ?? false;
+                        if ($pgIsInRecovery === false) {
+                            if ($this->master) {
+                                Exception::database('master should unique');
+                            }
+                            $this->master = $conf;
+                        } else {
+                            $this->slave[] = $conf;
+                        }
+                    }
                     break;
                 case Type::MSSQL:
+                    // mssql取第一个配置为主，后续为从
                     $conf['dsn'] = "sqlsrv:Server={$this->host[$i]},{$this->port[$i]};src={$this->name}";
-                    $this->master = $conf;
+                    if ($i === 0) {
+                        $this->master = $conf;
+                    } else {
+                        $this->slave[] = $conf;
+                    }
                     break;
                 case Type::SQLITE:
+                    // sqlite取第一个配置为主，后续为从
                     $conf['dsn'] = "sqlite:{$this->host[$i]}" . DIRECTORY_SEPARATOR . $this->name;
-                    $this->master = $conf;
+                    if ($i === 0) {
+                        $this->master = $conf;
+                    } else {
+                        $this->slave[] = $conf;
+                    }
                     break;
                 case Type::MONGO:
                     if ($this->account && $this->password) {

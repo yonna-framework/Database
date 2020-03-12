@@ -477,7 +477,6 @@ class Table extends AbstractPDO
                         $this->any($matchField, explode(',', $matchValue));
                         break;
                     default:
-                        continue;
                         break;
                 }
             }

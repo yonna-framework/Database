@@ -143,7 +143,7 @@ class Malloc
     /**
      * malloc
      * @param array $params
-     * @return mixed
+     * @return PDO|Redis|MongoManager
      * @throws null
      */
     public static function allocation(array $params = [])
