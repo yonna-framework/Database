@@ -3,6 +3,7 @@
 namespace Yonna\Database\Driver;
 
 use Yonna\Database\Driver\Mongo\Collection;
+use Yonna\Throwable\Exception;
 
 class Mongo
 {
@@ -31,11 +32,12 @@ class Mongo
     /**
      * @param string $collection
      * @return Collection count
+     * @throws null
      */
     public function collection(string $collection): Collection
     {
         if (empty($collection)) {
-            \Yonna\Throwable\Exception::database('collection error');
+            Exception::database('collection error');
         }
         $this->setting['collection'] = $collection;
         return (new Collection($this->setting));

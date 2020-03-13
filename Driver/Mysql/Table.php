@@ -7,7 +7,6 @@
 namespace Yonna\Database\Driver\Mysql;
 
 use Yonna\Database\Driver\AbstractPDO;
-use Yonna\Database\Driver\Malloc;
 use Yonna\Database\Driver\Type;
 use Yonna\Throwable\Exception;
 

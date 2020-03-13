@@ -45,6 +45,17 @@ class Mysql
     }
 
     /**
+     * @param $sql
+     * @return mixed
+     * @throws null
+     */
+    public function query($sql)
+    {
+        $t = new Table($this->setting, $this->options);
+        return $t->query($sql);
+    }
+
+    /**
      * 哪个表
      *
      * @param string $table
