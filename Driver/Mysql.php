@@ -36,6 +36,14 @@ class Mysql
     }
 
     /**
+     * @return Table|null
+     */
+    private function __next()
+    {
+        return new Table($this->setting, $this->options);
+    }
+
+    /**
      * 当前时间（只能用于insert 和 update）
      * @return array
      */
@@ -51,8 +59,7 @@ class Mysql
      */
     public function query($sql)
     {
-        $t = new Table($this->setting, $this->options);
-        return $t->query($sql);
+        return $this->__next()->query($sql);
     }
 
     /**
@@ -76,7 +83,7 @@ class Mysql
             $this->options['table'] = $table;
             $this->options['table_origin'] = null;
         }
-        return (new Table($this->setting, $this->options));
+        return $this->__next();
     }
 
 }

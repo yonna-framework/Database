@@ -275,7 +275,8 @@ abstract class AbstractDB
         } elseif ($this->statement === 'update'
             || $this->statement === 'delete'
             || $this->statement === 'insert'
-            || $this->statement == 'truncate') {
+            || $this->statement == 'truncate'
+            || $this->statement == 'create') {
             $this->statetype = "write";
         } else {
             Exception::database('Statement Error: ' . $statement);

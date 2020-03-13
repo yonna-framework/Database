@@ -373,7 +373,11 @@ abstract class AbstractPDO extends AbstractDB
     protected function parseValue($value)
     {
         if (is_string($value)) {
-            $value = '\'' . addslashes($value) . '\'';
+            if (is_object(json_decode($value)) or is_object(json_decode(stripslashes($value)))) {
+                $value = '\'' . $value . '\'';
+            } else {
+                $value = '\'' . addslashes($value) . '\'';
+            }
         } elseif (is_array($value)) {
             $value = array_map(array($this, 'parseValue'), $value);
         } elseif (is_bool($value)) {
@@ -416,6 +420,7 @@ abstract class AbstractPDO extends AbstractDB
      * @param $val
      * @param $ft
      * @return array|bool|false|int|string
+     * @throws null
      */
     protected function parseValueByFieldType($val, $ft)
     {
@@ -486,6 +491,12 @@ abstract class AbstractPDO extends AbstractDB
         return $val;
     }
 
+    /**
+     * @param $val
+     * @param $ft
+     * @return array|bool|false|int|string
+     * @throws null
+     */
     protected function parseWhereByFieldType($val, $ft)
     {
         if (!in_array($ft, ['json', 'jsonb']) && is_array($val)) {
@@ -549,8 +560,6 @@ abstract class AbstractPDO extends AbstractDB
      * @param $arr
      * @param $type
      * @return mixed
-     * 析构方法
-     * @access public
      */
     protected function arr2comma($arr, $type)
     {
@@ -1443,7 +1452,7 @@ abstract class AbstractPDO extends AbstractDB
         }
         $table = $this->getTable();
         if (!$table) {
-            Exception::database('lose table');
+            $table = '__table__';
         }
         $rawStatement = explode(" ", $query);
         $this->setState(strtolower(trim($rawStatement[0])));
