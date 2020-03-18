@@ -814,8 +814,10 @@ class Table extends AbstractPDO
      */
     public function insertAll($dataSet)
     {
-        $values = array();
-        if (!is_array($dataSet[0])) return false;
+        $values = [];
+        if (!is_array($dataSet[0])) {
+            return false;
+        }
         $fields = array_map(array($this, 'parseKey'), array_keys($dataSet[0]));
         $table = $this->getTable();
         $ft = $this->getFieldType($table);
