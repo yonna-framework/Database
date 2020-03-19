@@ -439,6 +439,22 @@ class Redis extends AbstractRDO
     }
 
     /**
+     * 这个方法是专门用来获取自增值
+     * @param $key
+     * @return int | float
+     * @throws Exception\DatabaseException
+     */
+    public function gcr($key)
+    {
+        $res = 0;
+        if ($this->rdo() === null || !$key) {
+            return $res;
+        }
+        $res = $this->query('get', $key);
+        return round($res, 2);
+    }
+
+    /**
      * @param $key
      * @param int $value
      * @return int | float
