@@ -207,7 +207,6 @@ class Where extends AbstractPDO
                     if ($table) {
                         $ft = $this->getFieldType($table);
                         $ft_type = $ft[$table . '_' . $v['field']] ?? null;
-                        var_dump($ft_type);
                         if (!empty($ft_type)) {
                             $innerSql = '';
                             $field = $this->parseKey($v['field']);
@@ -218,7 +217,6 @@ class Where extends AbstractPDO
                                     $value = $this->parseWhereByFieldType($v['value'], $ft_type);
                                     $value = $this->parseValue($value);
                                     $innerSql .= " = {$value}";
-                                    var_dump($innerSql);
                                     break;
                                 case self::notEqualTo:
                                     $value = $this->parseWhereByFieldType($v['value'], $ft_type);
