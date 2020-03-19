@@ -90,6 +90,9 @@ class Where extends AbstractPDO
      */
     protected function parseWhere()
     {
+        if (!$this->closure) {
+            return '';
+        }
         return $this->closure ? ' WHERE ' . $this->builtSql($this->closure) : '';
     }
 
@@ -167,12 +170,13 @@ class Where extends AbstractPDO
     {
         if ($operat == self::isNull || $operat == self::isNotNull || $value !== null) {//排除空值
             if ($operat != self::like || $operat != self::notLike || ($value != '%' && $value != '%%')) {//排除空like
-                $this->closure[] = array(
+                $this->closure[] = [
+                    'type' => 'chip',
                     'operat' => $operat,
                     'table' => $this->search_table,
                     'field' => $field,
                     'value' => $value,
-                );
+                ];
             }
         }
         return $this;
@@ -188,261 +192,257 @@ class Where extends AbstractPDO
      */
     private function builtSql($closure, $sql = '', $cond = 'and')
     {
+        $s = $sql ? [$sql] : [];
         foreach ($closure as $v) {
-            $table = isset($v['table']) && $v['table'] ? $v['table'] : $this->getTable();
-            if (!$table) {
-                return null;
-            }
-            $ft = $this->getFieldType($table);
-            if ($v['operat'] === 'closure') {
-                $innerSql = '(' . $this->builtSql($v['closure'], '', $v['cond']) . ')';
-                $sql .= $sql ? " {$cond}{$innerSql} " : $innerSql;
-            } else {
-                $si = strpos($v['field'], '#>>');
-                if ($si > 0) {
-                    preg_match("/\(?(.*)#>>/", $v['field'], $siField);
-                    $ft_type = $ft[$table . '_' . $siField[1]] ?? null;
-                } else {
-                    $ft_type = $ft[$table . '_' . $v['field']] ?? null;
-                }
-                if (empty($ft_type)) { // 根据表字段过滤无效field
-                    continue;
-                }
-                if ($this->sqlFilter($v['value'])) {
-                    $innerSql = ' ';
-                    $field = $this->parseKey($v['field']);
-                    if ($si > 0 && strpos($v['field'], '(') === 0) {
-                        $innerSql .= '(' . $this->parseKey($table) . '.';
-                        $innerSql .= substr($field, 1, strlen($field));
-                    } else {
-                        $innerSql .= $this->parseKey($table) . '.';
-                        $innerSql .= $field;
+            switch ($v['type']) {
+                case 'closure':
+                    $s[] = '(' . $this->builtSql($v['value']->getClosure(), $sql, $v['cond']) . ') ';
+                    break;
+                case 'string':
+                    $s[] = $v['value'];
+                    break;
+                case 'chip':
+                default:
+                    $table = empty($v['table']) ? $this->getTable() : $v['table'];
+                    if ($table) {
+                        $ft = $this->getFieldType($table);
+                        $ft_type = $ft[$table . '_' . $v['field']] ?? null;
+                        if (!empty($ft_type)) {
+                            // 根据表字段过滤无效field
+                            if ($this->sqlFilter($v['value'])) {
+                                $innerSql = '';
+                                $field = $this->parseKey($v['field']);
+                                $innerSql .= $this->parseKey($table) . '.' . $field;
+                                $notLinkSql = false;
+                                switch ($v['operat']) {
+                                    case self::equalTo:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " = {$value}";
+                                        break;
+                                    case self::notEqualTo:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " <> {$value}";
+                                        break;
+                                    case self::greaterThan:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " > {$value}";
+                                        break;
+                                    case self::greaterThanOrEqualTo:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " >= {$value}";
+                                        break;
+                                    case self::lessThan:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " < {$value}";
+                                        break;
+                                    case self::lessThanOrEqualTo:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " <= {$value}";
+                                        break;
+                                    case self::like:
+                                        if ($this->isCrypto()) {
+                                            $likeO = '';
+                                            $likeE = '';
+                                            $vSplit = str_split($v['value']);
+                                            if ($vSplit[0] === '%') {
+                                                $likeO = array_shift($vSplit);
+                                            }
+                                            if ($vSplit[count($vSplit) - 1] === '%') {
+                                                $likeE = array_pop($vSplit);
+                                            }
+                                            $value = $this->parseWhereByFieldType(implode('', $vSplit), $ft_type);
+                                            $value = $likeO . $value . $likeE;
+                                        } else {
+                                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        }
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " like {$value}";
+                                        break;
+                                    case self::notLike:
+                                        if (substr($ft_type, -2) === '[]') {
+                                            $innerSql = "array_to_string({$innerSql},'')";
+                                        }
+                                        if ($this->isCrypto()) {
+                                            $likeO = '';
+                                            $likeE = '';
+                                            $vSplit = str_split($v['value']);
+                                            if ($vSplit[0] === '%') {
+                                                $likeO = array_shift($vSplit);
+                                            }
+                                            if ($vSplit[count($vSplit) - 1] === '%') {
+                                                $likeE = array_pop($vSplit);
+                                            }
+                                            $value = $this->parseWhereByFieldType(implode('', $vSplit), $ft_type);
+                                            $value = $likeO . $value . $likeE;
+                                        } else {
+                                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        }
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " not like {$value}";
+                                        break;
+                                    case self::isNull:
+                                        $innerSql .= " is null ";
+                                        break;
+                                    case self::isNotNull:
+                                        $innerSql .= " is not null ";
+                                        break;
+                                    case self::between:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " between {$value[0]} and {$value[1]}";
+                                        break;
+                                    case self::notBetween:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " not between {$value[0]} and {$value[1]}";
+                                        break;
+                                    case self::in:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $value = implode(',', (array)$value);
+                                        $innerSql .= " in ({$value})";
+                                        break;
+                                    case self::notIn:
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $value = implode(',', (array)$value);
+                                        $innerSql .= " not in ({$value})";
+                                        break;
+                                    case self::findInSetOr:
+                                        if ($this->options['db_type'] !== Type::MYSQL) {
+                                            Exception::database("{$v['operat']} not support {$this->options['db_type']}");
+                                        }
+                                        if ($v['value']) {
+                                            $v['value'] = (array)$v['value'];
+                                            foreach ($v['value'] as $vfisk => $vfis) {
+                                                if ($vfis) {
+                                                    $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
+                                                    $vfis = $this->parseValue($vfis);
+                                                    if ($vfisk === 0) {
+                                                        $innerSql = " (find_in_set({$vfis},{$field})";
+                                                    } else {
+                                                        $innerSql .= " or find_in_set({$vfis},{$field})";
+                                                    }
+                                                }
+                                            }
+                                            $innerSql .= ")";
+                                        } else {
+                                            $notLinkSql = true;
+                                        }
+                                        break;
+                                    case self::notFindInSetOr:
+                                        $this->askType(Type::MYSQL, $v['operat']);
+                                        if ($v['value']) {
+                                            $v['value'] = (array)$v['value'];
+                                            foreach ($v['value'] as $vfisk => $vfis) {
+                                                if ($vfis) {
+                                                    $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
+                                                    $vfis = $this->parseValue($vfis);
+                                                    if ($vfisk === 0) {
+                                                        $innerSql = " (not find_in_set({$vfis},{$field})";
+                                                    } else {
+                                                        $innerSql .= " or not find_in_set({$vfis},{$field})";
+                                                    }
+                                                }
+                                            }
+                                            $innerSql .= ")";
+                                        } else {
+                                            $notLinkSql = true;
+                                        }
+                                        break;
+                                    case self::findInSetAnd:
+                                        $this->askType(Type::MYSQL, $v['operat']);
+                                        if ($v['value']) {
+                                            $v['value'] = (array)$v['value'];
+                                            foreach ($v['value'] as $vfisk => $vfis) {
+                                                if ($vfis) {
+                                                    $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
+                                                    $vfis = $this->parseValue($vfis);
+                                                    if ($vfisk === 0) {
+                                                        $innerSql = " (find_in_set({$vfis},{$field})";
+                                                    } else {
+                                                        $innerSql .= " and find_in_set({$vfis},{$field})";
+                                                    }
+                                                }
+                                            }
+                                            $innerSql .= ")";
+                                        } else {
+                                            $notLinkSql = true;
+                                        }
+                                        break;
+                                    case self::notFindInSetAnd:
+                                        $this->askType(Type::MYSQL, $v['operat']);
+                                        if ($v['value']) {
+                                            $v['value'] = (array)$v['value'];
+                                            foreach ($v['value'] as $vfisk => $vfis) {
+                                                if ($vfis) {
+                                                    $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
+                                                    $vfis = $this->parseValue($vfis);
+                                                    if ($vfisk === 0) {
+                                                        $innerSql = " (not find_in_set({$vfis},{$field})";
+                                                    } else {
+                                                        $innerSql .= " and not find_in_set({$vfis},{$field})";
+                                                    }
+                                                }
+                                            }
+                                            $innerSql .= ")";
+                                        } else {
+                                            $notLinkSql = true;
+                                        }
+                                        break;
+                                    case self::any:
+                                        $this->askType(Type::PGSQL, $v['operat']);
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->parseValue($value);
+                                        $value = (array)$value;
+                                        array_walk($value, function (&$value) {
+                                            $value = "({$value})";
+                                        });
+                                        $value = implode(',', $value);
+                                        $innerSql .= " = any (values {$value})";
+                                        break;
+                                    case self::contains:
+                                        $this->askType(Type::PGSQL, $v['operat']);
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->toPGArray((array)$value, str_replace('[]', '', $ft_type));
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " @> {$value}";
+                                        break;
+                                    case self::isContainsBy:
+                                        $this->askType(Type::PGSQL, $v['operat']);
+                                        $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                        $value = $this->toPGArray((array)$value, str_replace('[]', '', $ft_type));
+                                        $value = $this->parseValue($value);
+                                        $innerSql .= " <@ {$value}";
+                                        break;
+                                    default:
+                                        $notLinkSql = true;
+                                        break;
+                                }
+                                if (!$notLinkSql) {
+                                    $s[] = $innerSql;
+                                }
+                            }
+                        }
                     }
-                    $isContinue = false;
-                    switch ($v['operat']) {
-                        case self::equalTo:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " = {$value}";
-                            break;
-                        case self::notEqualTo:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " <> {$value}";
-                            break;
-                        case self::greaterThan:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " > {$value}";
-                            break;
-                        case self::greaterThanOrEqualTo:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " >= {$value}";
-                            break;
-                        case self::lessThan:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " < {$value}";
-                            break;
-                        case self::lessThanOrEqualTo:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " <= {$value}";
-                            break;
-                        case self::like:
-                            if ($this->isCrypto()) {
-                                $likeO = '';
-                                $likeE = '';
-                                $vspllit = str_split($v['value']);
-                                if ($vspllit[0] === '%') {
-                                    $likeO = array_shift($vspllit);
-                                }
-                                if ($vspllit[count($vspllit) - 1] === '%') {
-                                    $likeE = array_pop($vspllit);
-                                }
-                                $value = $this->parseWhereByFieldType(implode('', $vspllit), $ft_type);
-                                $value = $likeO . $value . $likeE;
-                            } else {
-                                $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            }
-                            $value = $this->parseValue($value);
-                            $innerSql .= " like {$value}";
-                            break;
-                        case self::notLike:
-                            if (substr($ft_type, -2) === '[]') {
-                                $innerSql = "array_to_string({$innerSql},'')";
-                            }
-                            if ($this->isCrypto()) {
-                                $likeO = '';
-                                $likeE = '';
-                                $vspllit = str_split($v['value']);
-                                if ($vspllit[0] === '%') {
-                                    $likeO = array_shift($vspllit);
-                                }
-                                if ($vspllit[count($vspllit) - 1] === '%') {
-                                    $likeE = array_pop($vspllit);
-                                }
-                                $value = $this->parseWhereByFieldType(implode('', $vspllit), $ft_type);
-                                $value = $likeO . $value . $likeE;
-                            } else {
-                                $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            }
-                            $value = $this->parseValue($value);
-                            $innerSql .= " not like {$value}";
-                            break;
-                        case self::isNull:
-                            $innerSql .= " is null ";
-                            break;
-                        case self::isNotNull:
-                            $innerSql .= " is not null ";
-                            break;
-                        case self::between:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " between {$value[0]} and {$value[1]}";
-                            break;
-                        case self::notBetween:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " not between {$value[0]} and {$value[1]}";
-                            break;
-                        case self::in:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $value = implode(',', (array)$value);
-                            $innerSql .= " in ({$value})";
-                            break;
-                        case self::notIn:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $value = implode(',', (array)$value);
-                            $innerSql .= " not in ({$value})";
-                            break;
-                        case self::findInSetOr:
-                            if ($this->options['db_type'] !== Type::MYSQL) {
-                                Exception::database("{$v['operat']} not support {$this->options['db_type']}");
-                            }
-                            if ($v['value']) {
-                                $v['value'] = (array)$v['value'];
-                                foreach ($v['value'] as $vfisk => $vfis) {
-                                    if ($vfis) {
-                                        $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                        $vfis = $this->parseValue($vfis);
-                                        if ($vfisk === 0) {
-                                            $innerSql = " (find_in_set({$vfis},{$field})";
-                                        } else {
-                                            $innerSql .= " or find_in_set({$vfis},{$field})";
-                                        }
-                                    }
-                                }
-                                $innerSql .= ")";
-                            } else {
-                                $isContinue = true;
-                            }
-                            break;
-                        case self::notFindInSetOr:
-                            $this->askType(Type::MYSQL, $v['operat']);
-                            if ($v['value']) {
-                                $v['value'] = (array)$v['value'];
-                                foreach ($v['value'] as $vfisk => $vfis) {
-                                    if ($vfis) {
-                                        $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                        $vfis = $this->parseValue($vfis);
-                                        if ($vfisk === 0) {
-                                            $innerSql = " (not find_in_set({$vfis},{$field})";
-                                        } else {
-                                            $innerSql .= " or not find_in_set({$vfis},{$field})";
-                                        }
-                                    }
-                                }
-                                $innerSql .= ")";
-                            } else {
-                                $isContinue = true;
-                            }
-                            break;
-                        case self::findInSetAnd:
-                            $this->askType(Type::MYSQL, $v['operat']);
-                            if ($v['value']) {
-                                $v['value'] = (array)$v['value'];
-                                foreach ($v['value'] as $vfisk => $vfis) {
-                                    if ($vfis) {
-                                        $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                        $vfis = $this->parseValue($vfis);
-                                        if ($vfisk === 0) {
-                                            $innerSql = " (find_in_set({$vfis},{$field})";
-                                        } else {
-                                            $innerSql .= " and find_in_set({$vfis},{$field})";
-                                        }
-                                    }
-                                }
-                                $innerSql .= ")";
-                            } else {
-                                $isContinue = true;
-                            }
-                            break;
-                        case self::notFindInSetAnd:
-                            $this->askType(Type::MYSQL, $v['operat']);
-                            if ($v['value']) {
-                                $v['value'] = (array)$v['value'];
-                                foreach ($v['value'] as $vfisk => $vfis) {
-                                    if ($vfis) {
-                                        $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                        $vfis = $this->parseValue($vfis);
-                                        if ($vfisk === 0) {
-                                            $innerSql = " (not find_in_set({$vfis},{$field})";
-                                        } else {
-                                            $innerSql .= " and not find_in_set({$vfis},{$field})";
-                                        }
-                                    }
-                                }
-                                $innerSql .= ")";
-                            } else {
-                                $isContinue = true;
-                            }
-                            break;
-                        case self::any:
-                            $this->askType(Type::PGSQL, $v['operat']);
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $value = (array)$value;
-                            array_walk($value, function (&$value) {
-                                $value = "({$value})";
-                            });
-                            $value = implode(',', $value);
-                            $innerSql .= " = any (values {$value})";
-                            break;
-                        case self::contains:
-                            $this->askType(Type::PGSQL, $v['operat']);
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->toPGArray((array)$value, str_replace('[]', '', $ft_type));
-                            $value = $this->parseValue($value);
-                            $innerSql .= " @> {$value}";
-                            break;
-                        case self::isContainsBy:
-                            $this->askType(Type::PGSQL, $v['operat']);
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->toPGArray((array)$value, str_replace('[]', '', $ft_type));
-                            $value = $this->parseValue($value);
-                            $innerSql .= " <@ {$value}";
-                            break;
-                        default:
-                            $isContinue = true;
-                            break;
-                    }
-                    if ($isContinue) continue;
-                    $sql .= $sql ? " {$cond}{$innerSql} " : $innerSql;
-                }
+                    break;
             }
         }
-        return $sql;
+        return implode(" {$cond} ", $s);
     }
 
     /**
      * 清理where条件
      * @return $this
      */
-    public function clearWhere()
+    public
+    function clearWhere()
     {
         $this->closure = [];
         $this->search_table = '';
@@ -450,11 +450,22 @@ class Where extends AbstractPDO
     }
 
     /**
+     * 获取条件闭包
+     * @return array
+     */
+    public
+    function getClosure()
+    {
+        return $this->closure;
+    }
+
+    /**
      * 锁定为哪一个表的搜索目标
      * @param $table
      * @return $this
      */
-    public function searchTable($table)
+    public
+    function searchTable($table)
     {
         $this->search_table = $table;
         return $this;
@@ -465,7 +476,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function equalTo($field, $value)
+    public
+    function equalTo($field, $value)
     {
         return $this->where(self::equalTo, $field, $value);
     }
@@ -475,7 +487,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function notEqualTo($field, $value)
+    public
+    function notEqualTo($field, $value)
     {
         return $this->where(self::notEqualTo, $field, $value);
     }
@@ -485,7 +498,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function greaterThan($field, $value)
+    public
+    function greaterThan($field, $value)
     {
         return $this->where(self::greaterThan, $field, $value);
     }
@@ -495,7 +509,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function greaterThanOrEqualTo($field, $value)
+    public
+    function greaterThanOrEqualTo($field, $value)
     {
         return $this->where(self::greaterThanOrEqualTo, $field, $value);
     }
@@ -505,7 +520,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function lessThan($field, $value)
+    public
+    function lessThan($field, $value)
     {
         return $this->where(self::lessThan, $field, $value);
     }
@@ -515,7 +531,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function lessThanOrEqualTo($field, $value)
+    public
+    function lessThanOrEqualTo($field, $value)
     {
         return $this->where(self::lessThanOrEqualTo, $field, $value);
     }
@@ -525,7 +542,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function like($field, $value)
+    public
+    function like($field, $value)
     {
         return $this->where(self::like, $field, $value);
     }
@@ -535,7 +553,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function notLike($field, $value)
+    public
+    function notLike($field, $value)
     {
         return $this->where(self::notLike, $field, $value);
     }
@@ -544,7 +563,8 @@ class Where extends AbstractPDO
      * @param $field
      * @return $this
      */
-    public function isNull($field)
+    public
+    function isNull($field)
     {
         return $this->where(self::isNull, $field);
     }
@@ -553,7 +573,8 @@ class Where extends AbstractPDO
      * @param $field
      * @return $this
      */
-    public function isNotNull($field)
+    public
+    function isNotNull($field)
     {
         return $this->where(self::isNotNull, $field);
     }
@@ -563,7 +584,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function between($field, $value)
+    public
+    function between($field, $value)
     {
         if (is_string($value)) $value = explode(',', $value);
         if (!is_array($value)) $value = (array)$value;
@@ -578,7 +600,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function notBetween($field, $value)
+    public
+    function notBetween($field, $value)
     {
         if (is_string($value)) $value = explode(',', $value);
         if (!is_array($value)) $value = (array)$value;
@@ -591,7 +614,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function in($field, $value)
+    public
+    function in($field, $value)
     {
         return $this->where(self::in, $field, $value);
     }
@@ -601,7 +625,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function notIn($field, $value)
+    public
+    function notIn($field, $value)
     {
         return $this->where(self::notIn, $field, $value);
     }
@@ -611,7 +636,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function findInSetOr($field, $value)
+    public
+    function findInSetOr($field, $value)
     {
         return $this->where(self::findInSetOr, $field, $value);
     }
@@ -621,7 +647,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function notFindInSetOr($field, $value)
+    public
+    function notFindInSetOr($field, $value)
     {
         return $this->where(self::notFindInSetOr, $field, $value);
     }
@@ -631,7 +658,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function findInSetAnd($field, $value)
+    public
+    function findInSetAnd($field, $value)
     {
         return $this->where(self::findInSetAnd, $field, $value);
     }
@@ -641,7 +669,8 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public function notFindInSetAnd($field, $value)
+    public
+    function notFindInSetAnd($field, $value)
     {
         return $this->where(self::notFindInSetAnd, $field, $value);
     }
@@ -651,7 +680,8 @@ class Where extends AbstractPDO
      * @param array $data
      * @return $this
      */
-    public function complex(array $set, array $data)
+    public
+    function complex(array $set, array $data)
     {
         foreach ($set as $target => $actions) {
             $this->searchTable($target);
@@ -678,15 +708,28 @@ class Where extends AbstractPDO
     }
 
     /**
+     * 字符串搜索where
+     * @param string $where
+     * @return $this
+     */
+    public
+    function search(string $where)
+    {
+        $this->closure[] = array('type' => 'string', 'value' => $where);
+        return $this;
+    }
+
+    /**
      * 条件and闭包
      * @param Closure $cells
      * @return $this
      */
-    public function and(Closure $cells)
+    public
+    function and(Closure $cells)
     {
-        $cells();
-        $this->closure = array(array('operat' => 'closure', 'cond' => 'and', 'closure' => $this->closure));
-        print_r($this->closure);
+        $nw = new self($this->options);
+        $cells($nw);
+        $this->closure[] = ['type' => 'closure', 'cond' => 'and', 'value' => $nw];
         return $this;
     }
 
@@ -697,8 +740,9 @@ class Where extends AbstractPDO
      */
     public function or(Closure $cells)
     {
-        $cells();
-        $this->closure = array(array('operat' => 'closure', 'cond' => 'or', 'closure' => $this->closure));
+        $nw = new self($this->options);
+        $cells($nw);
+        $this->closure[] = ['type' => 'closure', 'cond' => 'or', 'value' => $nw];
         return $this;
     }
 

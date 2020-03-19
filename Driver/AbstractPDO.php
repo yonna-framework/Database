@@ -828,6 +828,17 @@ abstract class AbstractPDO extends AbstractDB
     }
 
     /**
+     * where分析
+     * 这个where需要被继承的where覆盖才会有效
+     * @return string
+     * @throws null
+     */
+    protected function parseWhere()
+    {
+        return '';
+    }
+
+    /**
      * 生成查询SQL
      * @access private
      * @return string
@@ -871,7 +882,7 @@ abstract class AbstractPDO extends AbstractDB
                         $this->parseDistinct(isset($this->options['distinct']) ? $this->options['distinct'] : false),
                         $this->parseField(!empty($this->options['field']) ? $this->options['field'] : '*'),
                         $this->parseJoin(!empty($this->options['join']) ? $this->options['join'] : ''),
-                        $this->where ? $this->parseWhere() : '',
+                        $this->parseWhere(),
                         $this->parseGroupBy(!empty($this->options['group']) ? $this->options['group'] : ''),
                         $this->parseHaving(!empty($this->options['having']) ? $this->options['having'] : ''),
                         $this->parseOrderBy(!empty($this->options['order']) ? $this->options['order'] : ''),
@@ -891,7 +902,7 @@ abstract class AbstractPDO extends AbstractDB
                         $this->parseDistinct(isset($this->options['distinct']) ? $this->options['distinct'] : false),
                         $this->parseField(!empty($this->options['field']) ? $this->options['field'] : '*'),
                         $this->parseJoin(!empty($this->options['join']) ? $this->options['join'] : ''),
-                        $this->where ? $this->parseWhere() : '',
+                        $this->parseWhere(),
                         $this->parseGroupBy(!empty($this->options['group']) ? $this->options['group'] : ''),
                         $this->parseHaving(!empty($this->options['having']) ? $this->options['having'] : ''),
                         $this->parseOrderBy(!empty($this->options['order']) ? $this->options['order'] : ''),
@@ -911,7 +922,7 @@ abstract class AbstractPDO extends AbstractDB
                         $this->parseDistinct(isset($this->options['distinct']) ? $this->options['distinct'] : false),
                         $this->parseField(!empty($this->options['field']) ? $this->options['field'] : '*'),
                         $this->parseJoin(!empty($this->options['join']) ? $this->options['join'] : ''),
-                        $this->where ? $this->parseWhere() : '',
+                        $this->parseWhere(),
                         $this->parseGroupBY(!empty($this->options['group']) ? $this->options['group'] : ''),
                         $this->parseHaving(!empty($this->options['having']) ? $this->options['having'] : ''),
                         $this->parseOrderBY(!empty($this->options['order']) ? $this->options['order'] : ''),
