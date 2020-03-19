@@ -183,7 +183,7 @@ trait TraitOperat
         if (strpos($table, ',')) {// 多表更新支持JOIN操作
             $sql .= $this->parseJoin(!empty($this->options['join']) ? $this->options['join'] : '');
         }
-        $where = $this->where ? $this->parseWhere() : '';
+        $where = $this->parseWhere();
         if (!$where && $sure !== true) {
             Exception::database('update must be sure when without where：' . $sql);
         }

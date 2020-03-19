@@ -530,37 +530,6 @@ abstract class AbstractPDO extends AbstractDB
     }
 
     /**
-     * sql过滤
-     * @param $sql
-     * @return bool
-     */
-    protected function sqlFilter($sql)
-    {
-        $result = true;
-        if ($sql) {
-            if (is_array($sql)) {
-                foreach ($sql as $v) {
-                    if (!$v) continue;
-                    if (is_array($v)) {
-                        return $this->sqlFilter($v);
-                    } else {
-                        $preg = preg_match('/(.*?((select)|(from)|(count)|(delete)|(update)|(drop)|(truncate)).*?)+/i', $v);
-                        if ($preg) {
-                            $result = false;
-                            break;
-                        }
-                    }
-                }
-            } else {
-                if ($sql) {
-                    $result = preg_match('/(.*?((select)|(from)|(count)|(delete)|(update)|(drop)|(truncate)).*?)+/i', $sql) ? false : true;
-                }
-            }
-        }
-        return $result;
-    }
-
-    /**
      * 递归式格式化数据
      * @param $result
      * @return mixed

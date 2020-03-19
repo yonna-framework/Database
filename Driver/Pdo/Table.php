@@ -15,6 +15,15 @@ class Table extends AbstractPDO
     use TraitWhere;
 
     /**
+     * Table constructor.
+     * @param array $options
+     */
+    public function __construct(array $options)
+    {
+        parent::__construct($options);
+    }
+
+    /**
      * 指定查询字段
      * @param mixed $field
      * @param string | null $table
