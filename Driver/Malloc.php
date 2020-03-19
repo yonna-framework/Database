@@ -40,7 +40,7 @@ class Malloc
      * 新建分配
      * @param array $params
      * @return PDO|MongoClient|null
-     * @throws null
+     * @throws Exception\ThrowException
      */
     public static function newAllocation(array $params = [])
     {

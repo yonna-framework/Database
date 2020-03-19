@@ -88,7 +88,7 @@ class Table extends AbstractPDO
      */
     public function getJoinQty()
     {
-        return (int)$this->options['joinQty'];
+        return (int)$this->options['join_qty'];
     }
 
     /**
@@ -147,10 +147,10 @@ class Table extends AbstractPDO
                     } else $jsonStr .= " AND " . ($alia ? "{$target}.{$k}={$alia}.{$v}" : '');
                 }
             }
-            if (!isset($this->options['joinQty'])) {
-                $this->options['joinQty'] = 0;
+            if (!isset($this->options['join_qty'])) {
+                $this->options['join_qty'] = 0;
             }
-            $this->options['joinQty']++;
+            $this->options['join_qty']++;
             if ($alia) {
                 if (!isset($this->options['alia'])) {
                     $this->options['alia'] = array();
@@ -681,7 +681,7 @@ class Table extends AbstractPDO
     {
         $this->limit(1);
         $result = $this->multi();
-        return is_array($result) ? reset($result) : array();
+        return $result && is_array($result) ? reset($result) : $result;
     }
 
     /**

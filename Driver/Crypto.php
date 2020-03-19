@@ -2,7 +2,7 @@
 
 namespace Yonna\Database\Driver;
 
-use Exception;
+use Yonna\Throwable\Exception;
 
 class Crypto
 {
@@ -21,7 +21,7 @@ class Crypto
     /**
      * @param string $str
      * @return string
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     public static function encrypt(string $str)
     {
@@ -34,7 +34,7 @@ class Crypto
     /**
      * @param string $str
      * @return string
-     * @throws Exception
+     * @throws Exception\DatabaseException
      */
     public static function decrypt(string $str)
     {

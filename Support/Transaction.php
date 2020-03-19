@@ -92,7 +92,7 @@ class Transaction extends Support
     /**
      * 注册实例
      * @param $instance
-     * @throws null
+     * @throws Exception\DatabaseException
      */
     public static function register($instance)
     {

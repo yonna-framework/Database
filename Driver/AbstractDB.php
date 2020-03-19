@@ -2,6 +2,9 @@
 
 namespace Yonna\Database\Driver;
 
+use MongoDB\Driver\Command;
+use MongoDB\Driver\Server;
+use PDO;
 use Yonna\Database\Support\Record;
 use Yonna\Throwable\Exception;
 
@@ -14,10 +17,9 @@ abstract class AbstractDB
     const ASC = 'asc';
 
     /**
-     * 数据库驱动类型
-     * @var string|null
+     * @var array
      */
-    protected $db_type = null;
+    protected $options = [];
 
     /**
      * 项目key，用于区分不同项目的缓存key
@@ -55,13 +57,6 @@ abstract class AbstractDB
     protected $statetype;
 
     /**
-     * where条件对象，实现闭包
-     * @var array
-     */
-    protected $where = array();
-
-
-    /**
      * 错误信息
      * @var string
      */
@@ -95,25 +90,27 @@ abstract class AbstractDB
     /**
      * 构造方法
      *
-     * @param array $setting
+     * @param array $options
      * @throws null
      */
-    public function __construct(array $setting)
+    public function __construct(array $options = [])
     {
-        $this->project_key = $setting['project_key'] ?? null;
-        $this->host = $setting['host'] ? explode(',', $setting['host']) : [];
-        $this->port = $setting['port'] ? explode(',', $setting['port']) : [];
-        $this->account = $setting['account'] ? explode(',', $setting['account']) : [];
-        $this->password = $setting['password'] ? explode(',', $setting['password']) : [];
-        $this->name = $setting['name'] ?? null;
-        $this->replica = $setting['replica'] ?? null;
-        $this->charset = $setting['charset'] ?? 'utf8';
-        $this->auto_cache = $setting['auto_cache'] ?? false;
-        $this->auto_crypto = $setting['auto_crypto'] ?? false;
-        $this->crypto_type = $setting['crypto_type'] ?? null;
-        $this->crypto_secret = $setting['crypto_secret'] ?? null;
-        $this->crypto_iv = $setting['crypto_iv'] ?? null;
-        $this->fetchQuery = false;
+        $this->options = $options;
+        $this->options['fetch_query'] = $this->options['fetch_query'] ?? false;
+        //
+        $this->project_key = $this->options['project_key'] ?? null;
+        $this->host = $this->options['host'] ? explode(',', $this->options['host']) : [];
+        $this->port = $this->options['port'] ? explode(',', $this->options['port']) : [];
+        $this->account = $this->options['account'] ? explode(',', $this->options['account']) : [];
+        $this->password = $this->options['password'] ? explode(',', $this->options['password']) : [];
+        $this->name = $this->options['name'] ?? null;
+        $this->replica = $this->options['replica'] ?? null;
+        $this->charset = $this->options['charset'] ?? 'utf8';
+        $this->auto_cache = $this->options['auto_cache'] ?? false;
+        $this->auto_crypto = $this->options['auto_crypto'] ?? false;
+        $this->crypto_type = $this->options['crypto_type'] ?? null;
+        $this->crypto_secret = $this->options['crypto_secret'] ?? null;
+        $this->crypto_iv = $this->options['crypto_iv'] ?? null;
         $this->Crypto = new Crypto($this->crypto_type, $this->crypto_secret, $this->crypto_iv);
         $this->analysis();
         return $this;
@@ -121,11 +118,12 @@ abstract class AbstractDB
 
     /**
      * 分析 DSN，设定 master-slave
-     * @throws null
+     * @throws Exception\DatabaseException
+     * @throws \MongoDB\Driver\Exception\Exception
      */
     private function analysis()
     {
-        if (empty($this->db_type)) {
+        if (empty($this->options['db_type'])) {
             Exception::database('Dsn type is Empty');
         }
         // 空数据处理
@@ -142,21 +140,21 @@ abstract class AbstractDB
         for ($i = 0; $i < count($this->host); $i++) {
             $conf = [
                 'dsn' => $dsn,
-                'db_type' => $this->db_type,
+                'db_type' => $this->options['db_type'],
                 'host' => $this->host[$i],
                 'port' => $this->port[$i],
                 'account' => $this->account[$i],
                 'password' => $this->password[$i],
                 'charset' => $this->charset,
             ];
-            switch ($this->db_type) {
+            switch ($this->options['db_type']) {
                 case Type::MYSQL:
                     // mysql自动根据关系设定主从库
                     $conf['dsn'] = "mysql:dbname={$this->name};host={$this->host[$i]};port={$this->port[$i]}";
                     $prepare = Malloc::allocation($conf)->prepare("show slave status");
                     $res = $prepare->execute();
                     if ($res) {
-                        $slaveStatus = $prepare->fetchAll(\PDO::FETCH_ASSOC);
+                        $slaveStatus = $prepare->fetchAll(PDO::FETCH_ASSOC);
                         if (!$slaveStatus) {
                             if ($this->master) {
                                 Exception::database('master should unique');
@@ -173,7 +171,7 @@ abstract class AbstractDB
                     $prepare = Malloc::allocation($conf)->prepare("SELECT pg_is_in_recovery()");
                     $res = $prepare->execute();
                     if ($res) {
-                        $pgStatus = $prepare->fetch(\PDO::FETCH_ASSOC);
+                        $pgStatus = $prepare->fetch(PDO::FETCH_ASSOC);
                         $pgIsInRecovery = $pgStatus['pg_is_in_recovery'] ?? false;
                         if ($pgIsInRecovery === false) {
                             if ($this->master) {
@@ -210,11 +208,11 @@ abstract class AbstractDB
                         $conf['dsn'] = "mongodb://{$this->host[$i]}:{$this->port[$i]}/{$this->name}";
                     }
                     $manager = Malloc::allocation($conf)->getManager();
-                    $command = new \MongoDB\Driver\Command(['ping' => 1]);
+                    $command = new Command(['ping' => 1]);
                     $manager->executeCommand($this->name, $command);
                     $servers = $manager->getServers();
                     /**
-                     * @var $server \MongoDB\Driver\Server
+                     * @var $server Server
                      */
                     $server = reset($servers);
                     if ($server->isPrimary() === true) {
@@ -236,7 +234,7 @@ abstract class AbstractDB
                     }
                     break;
                 default:
-                    Exception::database("{$this->db_type} type is not supported for the time being");
+                    Exception::database("{$this->options['db_type']} type is not supported for the time being");
                     break;
             }
         }
@@ -256,9 +254,9 @@ abstract class AbstractDB
      */
     protected function resetAll()
     {
+        $this->options = null;
         $this->is_crypto = false;
         $this->error = null;
-        $this->where = array();
     }
 
     /**
@@ -279,7 +277,7 @@ abstract class AbstractDB
             || $this->statement == 'create') {
             $this->statetype = "write";
         } else {
-            Exception::database('Statement Error: ' . $statement);
+            Exception::database('Statement Error: ' . $this->statement);
         }
         return $this;
     }
@@ -301,7 +299,7 @@ abstract class AbstractDB
      */
     protected function malloc(bool $force_new = false)
     {
-        switch ($this->db_type) {
+        switch ($this->options['db_type']) {
             case TYPE::MYSQL:
             case TYPE::PGSQL:
             case TYPE::MSSQL:
@@ -337,6 +335,7 @@ abstract class AbstractDB
             case TYPE::REDIS:
             case TYPE::REDIS_CO:
                 // redis暂不支持只选用master
+            default:
                 $params = $this->master;
                 break;
         }
@@ -393,7 +392,7 @@ abstract class AbstractDB
      */
     protected function query(string $query)
     {
-        Record::add($this->db_type, $this->last_connection, $query);
+        Record::add($this->options['db_type'], $this->last_connection, $query);
     }
 
     /**
@@ -401,45 +400,7 @@ abstract class AbstractDB
      */
     public function fetchQuery()
     {
-        $this->fetchQuery = true;
-        return $this;
-    }
-
-    /**
-     * @param array $whereSet
-     * @param array $whereData
-     * @return $this
-     */
-    public function where(array $whereSet, array $whereData)
-    {
-        foreach ($whereSet as $target => $actions) {
-            switch ($this->db_type) {
-                case Type::MONGO:
-                    $this->whereCollection($target);
-                    break;
-                default:
-                    $this->whereTable($target);
-                    break;
-            }
-            foreach ($actions as $action) {
-                foreach ($whereSet as $field) {
-                    if (!isset($whereData[$field]) || $whereData[$field] === null) {
-                        continue;
-                    }
-                    if ($whereData[$field] !== null) {
-                        switch ($action) {
-                            case 'like':
-                                $this->$action('%' . $whereData[$field] . '%');
-                                break;
-                            default:
-                                $this->$action($whereData[$field]);
-                                break;
-                        }
-                        $this->$action($whereData[$field]);
-                    }
-                }
-            }
-        }
+        $this->options['fetch_query'] = true;
         return $this;
     }
 

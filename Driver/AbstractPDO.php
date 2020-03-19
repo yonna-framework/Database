@@ -7,7 +7,6 @@ use PDOException;
 use PDOStatement;
 use Yonna\Throwable\Exception;
 use Yonna\Foundation\Str;
-use Yonna\Foundation\Moment;
 
 abstract class AbstractPDO extends AbstractDB
 {
@@ -20,73 +19,31 @@ abstract class AbstractPDO extends AbstractDB
     protected $PDOStatement;
 
     /**
-     * sql 的参数
-     *
-     * @var array
-     */
-    protected $parameters = array();
-
-    /**
      * 参数
      *
      * @var array
      */
-    protected $options = array();
+    protected $options = [];
 
     /**
      * 临时字段寄存
      */
-    protected $currentFieldType = array();
-    protected $tempFieldType = array();
+    protected $currentFieldType = [];
+    protected $tempFieldType = [];
 
     /**
-     * 查询表达式
-     *
-     * @var string
+     * @var null
      */
-    protected $selectSql = null;
-
-    /**
-     * where条件，哪个表
-     * @var string
-     */
-    protected $where_table = '';
-
-
-    /**
-     * where 条件类型设置
-     */
-    const equalTo = 'equalTo';                              //等于
-    const notEqualTo = 'notEqualTo';                        //不等于
-    const greaterThan = 'greaterThan';                      //大于
-    const greaterThanOrEqualTo = 'greaterThanOrEqualTo';    //大于等于
-    const lessThan = 'lessThan';                            //小于
-    const lessThanOrEqualTo = 'lessThanOrEqualTo';          //小于等于
-    const like = 'like';                                    //包含
-    const notLike = 'notLike';                              //不包含
-    const isNull = 'isNull';                                //为空
-    const isNotNull = 'isNotNull';                          //不为空
-    const between = 'between';                              //在值之内
-    const notBetween = 'notBetween';                        //在值之外
-    const in = 'in';                                        //在或集
-    const notIn = 'notIn';                                  //不在或集
-    const findInSetOr = 'findInSetOr';                      //findInSetOr (mysql)
-    const notFindInSetOr = 'notFindInSetOr';                //notFindInSetOr (mysql)
-    const findInSetAnd = 'findInSetAnd';                    //findInSetAnd (mysql)
-    const notFindInSetAnd = 'notFindInSetAnd';              //notFindInSetAnd (mysql)
-    const any = 'any';                                      //any (pgsql)
-    const contains = 'contains';                            //contains (pgsql)
-    const isContainsBy = 'isContainsBy';                    //isContainsBy (pgsql)
+    protected $where = null;
 
     /**
      * 构造方法
      *
-     * @param array $setting
+     * @param array $options
      */
-    public function __construct(array $setting)
+    public function __construct(array $options)
     {
-        parent::__construct($setting);
-        return $this;
+        parent::__construct($options);
     }
 
     /**
@@ -104,11 +61,9 @@ abstract class AbstractPDO extends AbstractDB
      */
     protected function resetAll()
     {
-        $this->options = array();
-        $this->parameters = array();
-        $this->currentFieldType = array();
-        $this->tempFieldType = array();
-        $this->where_table = '';
+        $this->options = [];
+        $this->currentFieldType = [];
+        $this->tempFieldType = [];
         parent::resetAll();
     }
 
@@ -128,7 +83,6 @@ abstract class AbstractPDO extends AbstractDB
         return $error;
     }
 
-
     /**
      * 检查数据库
      * @param $type
@@ -137,8 +91,8 @@ abstract class AbstractPDO extends AbstractDB
      */
     protected function askType($type, $msg)
     {
-        if ($this->db_type !== $type) {
-            Exception::database("{$msg} not support {$this->db_type} yet");
+        if ($this->options['db_type'] !== $type) {
+            Exception::database("{$msg} not support {$this->options['db_type']} yet");
         }
     }
 
@@ -163,6 +117,31 @@ abstract class AbstractPDO extends AbstractDB
     }
 
     /**
+     * 当前时间（只能用于insert 和 update）
+     * @return mixed
+     */
+    protected function now()
+    {
+        $now = null;
+        switch ($this->options['db_type']) {
+            case Type::MYSQL:
+            case Type::PGSQL:
+                $now = ['exp', 'now()'];
+                break;
+            case Type::MSSQL:
+                $now = ['exp', "GETDATE()"];
+                break;
+            case Type::SQLITE:
+                $now = ['exp', "select datetime(CURRENT_TIMESTAMP,'localtime')"];
+                break;
+            default:
+                $now = date('Y-m-d H:i:s', time());
+                break;
+        }
+        return $now;
+    }
+
+    /**
      * 返回 lastInsertId
      *
      * @return string
@@ -184,12 +163,6 @@ abstract class AbstractPDO extends AbstractDB
         $this->pdoFree();
         try {
             $PDOStatement = $this->pdo()->prepare($query);
-            if (!empty($this->parameters)) {
-                foreach ($this->parameters as $param) {
-                    $parameters = explode("\x7F", $param);
-                    $PDOStatement->bindParam($parameters[0], $parameters[1]);
-                }
-            }
             $PDOStatement->execute();
         } catch (PDOException $e) {
             // 服务端断开时重连一次
@@ -197,12 +170,6 @@ abstract class AbstractPDO extends AbstractDB
                 $this->pdoFree();
                 try {
                     $PDOStatement = $this->pdo()->prepare($query);
-                    if (!empty($this->parameters)) {
-                        foreach ($this->parameters as $param) {
-                            $parameters = explode("\x7F", $param);
-                            $PDOStatement->bindParam($parameters[0], $parameters[1]);
-                        }
-                    }
                     $PDOStatement->execute();
                 } catch (PDOException $ex) {
                     return $this->error($ex);
@@ -213,7 +180,6 @@ abstract class AbstractPDO extends AbstractDB
                 return $this->error($err_msg);
             }
         }
-        $this->parameters = array();
         return $PDOStatement;
     }
 
@@ -221,6 +187,7 @@ abstract class AbstractPDO extends AbstractDB
      * 获取表字段类型
      * @param $table
      * @return mixed|null
+     * @throws Exception\DatabaseException
      */
     protected function getFieldType($table = null)
     {
@@ -234,7 +201,7 @@ abstract class AbstractPDO extends AbstractDB
                 $alia = true;
             }
             $result = null;
-            switch ($this->db_type) {
+            switch ($this->options['db_type']) {
                 case Type::MYSQL:
                     $sql = "SELECT COLUMN_NAME AS `field`,DATA_TYPE AS fieldtype FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema ='{$this->name}' AND table_name = '{$table}';";
                     $result = Cache::get($sql);
@@ -264,7 +231,7 @@ abstract class AbstractPDO extends AbstractDB
                         $PDOStatement = $this->execute($sql);
                         if ($PDOStatement) {
                             $temp = $PDOStatement->fetchAll(PDO::FETCH_ASSOC);
-                            $result = array();
+                            $result = [];
                             foreach ($temp as $v) {
                                 $result[] = array(
                                     'field' => $v['COLUMN_NAME'],
@@ -287,7 +254,7 @@ abstract class AbstractPDO extends AbstractDB
                             $temp = substr($temp, 1, strlen($temp) - 1);
                             $temp = substr($temp, 0, strlen($temp) - 1);
                             $temp = explode(',', $temp);
-                            $result = array();
+                            $result = [];
                             foreach ($temp as $v) {
                                 $v = explode(' ', trim($v));
                                 $result[] = array(
@@ -300,13 +267,13 @@ abstract class AbstractPDO extends AbstractDB
                     }
                     break;
                 default:
-                    Exception::database("Field Type not support {$this->db_type} yet");
+                    Exception::database("Field Type not support {$this->options['db_type']} yet");
                     break;
             }
             if (!$result) {
-                Exception::throw("{$this->db_type} get table:{$table} type fail");
+                Exception::database("{$this->options['db_type']} get table:{$table} type fail");
             }
-            $ft = array();
+            $ft = [];
             foreach ($result as $v) {
                 if ($alia && $originTable) {
                     $ft[$originTable . '_' . $v['field']] = $v['fieldtype'];
@@ -340,12 +307,13 @@ abstract class AbstractPDO extends AbstractDB
      * @access protected
      * @param string $key
      * @return string
+     * @throws null
      */
     protected function parseKey($key)
     {
         $key = trim($key);
         if (!is_numeric($key) && !preg_match('/[,\'\"\*\(\)`.\s]/', $key)) {
-            switch ($this->db_type) {
+            switch ($this->options['db_type']) {
                 case Type::MYSQL:
                     $key = '`' . $key . '`';
                     break;
@@ -357,7 +325,7 @@ abstract class AbstractPDO extends AbstractDB
                     $key = "'" . $key . "'";
                     break;
                 default:
-                    Exception::throw('parseKey db type error');
+                    Exception::database('parseKey db type error');
                     break;
             }
         }
@@ -402,7 +370,7 @@ abstract class AbstractPDO extends AbstractDB
         if (is_array($fields)) {
             // 完善数组方式传字段名的支持
             // 支持 'field1'=>'field2' 这样的字段别名定义
-            $array = array();
+            $array = [];
             foreach ($fields as $key => $field) {
                 if (!is_numeric($key))
                     $array[] = $this->parseKey($key) . ' AS ' . $this->parseKey($field);
@@ -420,7 +388,7 @@ abstract class AbstractPDO extends AbstractDB
      * @param $val
      * @param $ft
      * @return array|bool|false|int|string
-     * @throws null
+     * @throws Exception\DatabaseException
      */
     protected function parseValueByFieldType($val, $ft)
     {
@@ -448,7 +416,7 @@ abstract class AbstractPDO extends AbstractDB
                     $json = array('crypto' => $this->Crypto::encrypt($val));
                     $val = json_encode($json);
                 }
-                if ($this->db_type === Type::MYSQL) {
+                if ($this->options['db_type'] === Type::MYSQL) {
                     $val = addslashes($val);
                 }
                 break;
@@ -481,71 +449,7 @@ abstract class AbstractPDO extends AbstractDB
                 }
                 break;
             default:
-                if ($this->db_type === Type::PGSQL) {
-                    if (strpos($ft, 'numeric') !== false) {
-                        $val = round($val, 10);
-                    }
-                }
-                break;
-        }
-        return $val;
-    }
-
-    /**
-     * @param $val
-     * @param $ft
-     * @return array|bool|false|int|string
-     * @throws null
-     */
-    protected function parseWhereByFieldType($val, $ft)
-    {
-        if (!in_array($ft, ['json', 'jsonb']) && is_array($val)) {
-            foreach ($val as $k => $v) {
-                $val[$k] = $this->parseWhereByFieldType($v, $ft);
-            }
-            return $val;
-        }
-        switch ($ft) {
-            case 'tinyint':
-            case 'smallint':
-            case 'int':
-            case 'integer':
-            case 'bigint':
-                $val = intval($val);
-                break;
-            case 'boolean':
-                $val = boolval($val);
-                break;
-            case 'date':
-                $val = date('Y-m-d', strtotime($val));
-                break;
-            case 'timestamp without time zone':
-                $val = Moment::datetimeMicro('Y-m-d H:i:s', $val);
-                break;
-            case 'timestamp with time zone':
-                $val = Moment::datetimeMicro('Y-m-d H:i:s', $val) . substr(date('O', strtotime($val)), 0, 3);
-                break;
-            case 'smallmoney':
-            case 'money':
-            case 'numeric':
-            case 'decimal':
-            case 'float':
-            case 'real':
-                $val = round($val, 10);
-                break;
-            case 'char':
-            case 'varchar':
-            case 'text':
-            case 'nchar':
-            case 'nvarchar':
-            case 'ntext':
-                $val = trim($val);
-                if ($this->isCrypto()) {
-                    $val = $this->Crypto::encrypt($val);
-                }
-                break;
-            default:
-                if ($this->db_type === Type::PGSQL) {
+                if ($this->options['db_type'] === Type::PGSQL) {
                     if (strpos($ft, 'numeric') !== false) {
                         $val = round($val, 10);
                     }
@@ -560,6 +464,7 @@ abstract class AbstractPDO extends AbstractDB
      * @param $arr
      * @param $type
      * @return mixed
+     * @throws Exception\DatabaseException
      */
     protected function arr2comma($arr, $type)
     {
@@ -581,6 +486,7 @@ abstract class AbstractPDO extends AbstractDB
      * @param $arr
      * @param $type
      * @return mixed
+     * @throws Exception\DatabaseException
      */
     protected function comma2arr($arr, $type)
     {
@@ -606,6 +512,7 @@ abstract class AbstractPDO extends AbstractDB
      * @param $arr
      * @param $type
      * @return mixed
+     * @throws Exception\DatabaseException
      */
     protected function toPGArray($arr, $type)
     {
@@ -657,6 +564,7 @@ abstract class AbstractPDO extends AbstractDB
      * 递归式格式化数据
      * @param $result
      * @return mixed
+     * @throws Exception\DatabaseException
      */
     protected function fetchFormat($result)
     {
@@ -698,7 +606,7 @@ abstract class AbstractPDO extends AbstractDB
                             }
                             break;
                         default:
-                            if ($this->db_type === Type::PGSQL) {
+                            if ($this->options['db_type'] === Type::PGSQL) {
                                 if (substr($ft[$k], -2) === '[]') {
                                     $result[$k] = json_decode($v, true);
                                     if ($this->isCrypto()) {
@@ -722,41 +630,17 @@ abstract class AbstractPDO extends AbstractDB
         return $result;
     }
 
-
-    /**
-     * 分析表达式
-     * @access protected
-     * @param array $options 表达式参数
-     * @return array
-     */
-    protected function parseOptions($options = array())
-    {
-        if (empty($this->options['field'])) {
-            $this->field('*');
-        }
-        if (is_array($options)) {
-            $options = array_merge($this->options, $options);
-        }
-        if (!isset($options['table'])) {
-            $options['table'] = $this->getTable();
-        }
-        //别名
-        if (!empty($options['alias'])) {
-            $options['table'] .= ' ' . $options['alias'];
-        }
-        return $options;
-    }
-
     /**
      * schemas分析
      * @access private
      * @param mixed $schemas
      * @return string
+     * @throws Exception\DatabaseException
      */
     protected function parseSchemas($schemas)
     {
         if (is_array($schemas)) {// 支持别名定义
-            $array = array();
+            $array = [];
             foreach ($schemas as $schema => $alias) {
                 if (!is_numeric($schema))
                     $array[] = $this->parseKey($schema) . ' ' . $this->parseKey($alias);
@@ -776,12 +660,13 @@ abstract class AbstractPDO extends AbstractDB
      * @access private
      * @param mixed $tables
      * @return string
+     * @throws null
      */
     protected function parseTable($tables)
     {
-        if (!$tables) Exception::throw('no table');
+        if (!$tables) Exception::database('no table');
         if (is_array($tables)) {// 支持别名定义
-            $array = array();
+            $array = [];
             foreach ($tables as $table => $alias) {
                 if (!is_numeric($table))
                     $array[] = $this->parseKey($table) . ' ' . $this->parseKey($alias);
@@ -805,7 +690,7 @@ abstract class AbstractPDO extends AbstractDB
     protected function parseLimit($limit)
     {
         $l = '';
-        switch ($this->db_type) {
+        switch ($this->options['db_type']) {
             case Type::MSSQL:
                 if (!empty($this->options['offset'])) {
                     return $l;
@@ -824,12 +709,13 @@ abstract class AbstractPDO extends AbstractDB
      * @access private
      * @param mixed $offset
      * @return string
+     * @throws Exception\DatabaseException
      */
     protected function parseOffset($offset)
     {
         if ($offset > 0 || $offset === 0) {
             if (empty($this->options['order'])) {
-                Exception::throw('OFFSET should used ORDER BY');
+                Exception::database('OFFSET should used ORDER BY');
             }
             return " offset {$offset} rows fetch next {$this->options['limit']} rows only";
         }
@@ -860,7 +746,7 @@ abstract class AbstractPDO extends AbstractDB
     protected function parseOrderBy($order)
     {
         if (is_array($order)) {
-            $array = array();
+            $array = [];
             foreach ($order as $key => $val) {
                 if (is_numeric($key)) {
                     $array[] = $this->parseKey($val);
@@ -918,28 +804,6 @@ abstract class AbstractPDO extends AbstractDB
     }
 
     /**
-     * union分析
-     * @access private
-     * @param mixed $union
-     * @return string
-     */
-    protected function parseUnion($union)
-    {
-        if (empty($union)) return '';
-        if (isset($union['_all'])) {
-            $str = 'UNION ALL ';
-            unset($union['_all']);
-        } else {
-            $str = 'UNION ';
-        }
-        $sql = array();
-        foreach ($union as $u) {
-            $sql[] = $str . (is_array($u) ? $this->buildSelectSql($u) : $u);
-        }
-        return implode(' ', $sql);
-    }
-
-    /**
      * 设置锁机制
      * @access private
      * @param bool $lock
@@ -966,474 +830,103 @@ abstract class AbstractPDO extends AbstractDB
     /**
      * 生成查询SQL
      * @access private
-     * @param array $options 表达式
      * @return string
+     * @throws Exception\DatabaseException
      */
-    protected function buildSelectSql($options = array())
+    protected function buildSelectSql()
     {
-        if (isset($options['page'])) {
+        if (empty($this->options['field'])) {
+            $this->field('*');
+        }
+        if (isset($this->options['page'])) {
             // 根据页数计算limit
-            list($page, $listRows) = $options['page'];
+            list($page, $listRows) = $this->options['page'];
             $page = $page > 0 ? $page : 1;
-            $listRows = $listRows > 0 ? $listRows : (is_numeric($options['limit']) ? $options['limit'] : 20);
+            $listRows = $listRows > 0 ? $listRows : (is_numeric($this->options['limit']) ? $this->options['limit'] : 20);
             $offset = $listRows * ($page - 1);
-            switch ($this->db_type) {
+            switch ($this->options['db_type']) {
                 case Type::MSSQL:
-                    $options['limit'] = $listRows;
-                    $options['offset'] = $offset;
+                    $this->options['limit'] = $listRows;
+                    $this->options['offset'] = $offset;
                     break;
                 default:
-                    $options['limit'] = $listRows . ' OFFSET ' . $offset;
+                    $this->options['limit'] = $listRows . ' OFFSET ' . $offset;
                     break;
             }
         }
-        $sql = $this->parseSql($this->selectSql, $options);
-        return $sql;
-    }
-
-    /**
-     * where分析
-     * @access private
-     * @param mixed $where
-     * @return string
-     */
-    protected function parseWhere($where)
-    {
-        $whereStr = '';
-        if ($this->where) {
-            //闭包形式
-            $whereStr = $this->builtWhereSql($this->where);
-        } elseif ($where) {
-            if (is_string($where)) {
-                //直接字符串
-                $whereStr = $where;
-            } elseif (is_array($where)) {
-                //数组形式,只支持field=>value形式 AND 逻辑 和 equalTo 条件
-                $this->where = array();
-                foreach ($where as $k => $v) {
-                    $this->whereOperat(self::equalTo, $k, $v);
-                }
-                $whereStr = $this->builtWhereSql($this->where);
-            }
+        $table = isset($this->options['table']) ? $this->options['table'] : null;
+        if ($table && !empty($this->options['alias'])) {
+            $table .= ' ' . $this->options['alias'];
         }
-        return empty($whereStr) ? '' : ' WHERE ' . $whereStr;
-    }
-
-    /**
-     * @param string $operat see self
-     * @param string $field
-     * @param null $value
-     * @return $this | Mysql\Table | Pgsql\Table | Mssql\Table | Sqlite\Table
-     */
-    protected function whereOperat($operat, $field, $value = null)
-    {
-        if ($operat == self::isNull || $operat == self::isNotNull || $value !== null) {//排除空值
-            if ($operat != self::like || $operat != self::notLike || ($value != '%' && $value != '%%')) {//排除空like
-                $this->where[] = array(
-                    'operat' => $operat,
-                    'table' => $this->where_table,
-                    'field' => $field,
-                    'value' => $value,
-                );
-            }
-        }
-        return $this;
-    }
-
-    /**
-     * 构建where的SQL语句
-     * @param $closure
-     * @param string $sql
-     * @param string $cond
-     * @return string|null
-     */
-    private function builtWhereSql($closure, $sql = '', $cond = 'and')
-    {
-        foreach ($closure as $v) {
-            $table = isset($v['table']) && $v['table'] ? $v['table'] : $this->getTable();
-            if (!$table) {
-                return null;
-            }
-            $ft = $this->getFieldType($table);
-            if ($v['operat'] === 'closure') {
-                $innerSql = '(' . $this->builtWhereSql($v['closure'], '', $v['cond']) . ')';
-                $sql .= $sql ? " {$cond}{$innerSql} " : $innerSql;
-            } else {
-                $si = strpos($v['field'], '#>>');
-                if ($si > 0) {
-                    preg_match("/\(?(.*)#>>/", $v['field'], $siField);
-                    $ft_type = $ft[$table . '_' . $siField[1]] ?? null;
-                } else {
-                    $ft_type = $ft[$table . '_' . $v['field']] ?? null;
-                }
-                if (empty($ft_type)) { // 根据表字段过滤无效field
-                    continue;
-                }
-                if ($this->sqlFilter($v['value'])) {
-                    $innerSql = ' ';
-                    $field = $this->parseKey($v['field']);
-                    if ($si > 0 && strpos($v['field'], '(') === 0) {
-                        $innerSql .= '(' . $this->parseKey($table) . '.';
-                        $innerSql .= substr($field, 1, strlen($field));
-                    } else {
-                        $innerSql .= $this->parseKey($table) . '.';
-                        $innerSql .= $field;
-                    }
-                    $isContinue = false;
-                    switch ($v['operat']) {
-                        case self::equalTo:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " = {$value}";
-                            break;
-                        case self::notEqualTo:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " <> {$value}";
-                            break;
-                        case self::greaterThan:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " > {$value}";
-                            break;
-                        case self::greaterThanOrEqualTo:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " >= {$value}";
-                            break;
-                        case self::lessThan:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " < {$value}";
-                            break;
-                        case self::lessThanOrEqualTo:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " <= {$value}";
-                            break;
-                        case self::like:
-                            if ($this->isCrypto()) {
-                                $likeO = '';
-                                $likeE = '';
-                                $vspllit = str_split($v['value']);
-                                if ($vspllit[0] === '%') {
-                                    $likeO = array_shift($vspllit);
-                                }
-                                if ($vspllit[count($vspllit) - 1] === '%') {
-                                    $likeE = array_pop($vspllit);
-                                }
-                                $value = $this->parseWhereByFieldType(implode('', $vspllit), $ft_type);
-                                $value = $likeO . $value . $likeE;
-                            } else {
-                                $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            }
-                            $value = $this->parseValue($value);
-                            $innerSql .= " like {$value}";
-                            break;
-                        case self::notLike:
-                            if (substr($ft_type, -2) === '[]') {
-                                $innerSql = "array_to_string({$innerSql},'')";
-                            }
-                            if ($this->isCrypto()) {
-                                $likeO = '';
-                                $likeE = '';
-                                $vspllit = str_split($v['value']);
-                                if ($vspllit[0] === '%') {
-                                    $likeO = array_shift($vspllit);
-                                }
-                                if ($vspllit[count($vspllit) - 1] === '%') {
-                                    $likeE = array_pop($vspllit);
-                                }
-                                $value = $this->parseWhereByFieldType(implode('', $vspllit), $ft_type);
-                                $value = $likeO . $value . $likeE;
-                            } else {
-                                $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            }
-                            $value = $this->parseValue($value);
-                            $innerSql .= " not like {$value}";
-                            break;
-                        case self::isNull:
-                            $innerSql .= " is null ";
-                            break;
-                        case self::isNotNull:
-                            $innerSql .= " is not null ";
-                            break;
-                        case self::between:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " between {$value[0]} and {$value[1]}";
-                            break;
-                        case self::notBetween:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $innerSql .= " not between {$value[0]} and {$value[1]}";
-                            break;
-                        case self::in:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $value = implode(',', (array)$value);
-                            $innerSql .= " in ({$value})";
-                            break;
-                        case self::notIn:
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $value = implode(',', (array)$value);
-                            $innerSql .= " not in ({$value})";
-                            break;
-                        case self::findInSetOr:
-                            if ($this->db_type !== Type::MYSQL) {
-                                Exception::throw("{$v['operat']} not support {$this->db_type}");
-                            }
-                            if ($v['value']) {
-                                $v['value'] = (array)$v['value'];
-                                foreach ($v['value'] as $vfisk => $vfis) {
-                                    if ($vfis) {
-                                        $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                        $vfis = $this->parseValue($vfis);
-                                        if ($vfisk === 0) {
-                                            $innerSql = " (find_in_set({$vfis},{$field})";
-                                        } else {
-                                            $innerSql .= " or find_in_set({$vfis},{$field})";
-                                        }
-                                    }
-                                }
-                                $innerSql .= ")";
-                            } else {
-                                $isContinue = true;
-                            }
-                            break;
-                        case self::notFindInSetOr:
-                            $this->askType(Type::MYSQL, $v['operat']);
-                            if ($v['value']) {
-                                $v['value'] = (array)$v['value'];
-                                foreach ($v['value'] as $vfisk => $vfis) {
-                                    if ($vfis) {
-                                        $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                        $vfis = $this->parseValue($vfis);
-                                        if ($vfisk === 0) {
-                                            $innerSql = " (not find_in_set({$vfis},{$field})";
-                                        } else {
-                                            $innerSql .= " or not find_in_set({$vfis},{$field})";
-                                        }
-                                    }
-                                }
-                                $innerSql .= ")";
-                            } else {
-                                $isContinue = true;
-                            }
-                            break;
-                        case self::findInSetAnd:
-                            $this->askType(Type::MYSQL, $v['operat']);
-                            if ($v['value']) {
-                                $v['value'] = (array)$v['value'];
-                                foreach ($v['value'] as $vfisk => $vfis) {
-                                    if ($vfis) {
-                                        $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                        $vfis = $this->parseValue($vfis);
-                                        if ($vfisk === 0) {
-                                            $innerSql = " (find_in_set({$vfis},{$field})";
-                                        } else {
-                                            $innerSql .= " and find_in_set({$vfis},{$field})";
-                                        }
-                                    }
-                                }
-                                $innerSql .= ")";
-                            } else {
-                                $isContinue = true;
-                            }
-                            break;
-                        case self::notFindInSetAnd:
-                            $this->askType(Type::MYSQL, $v['operat']);
-                            if ($v['value']) {
-                                $v['value'] = (array)$v['value'];
-                                foreach ($v['value'] as $vfisk => $vfis) {
-                                    if ($vfis) {
-                                        $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                        $vfis = $this->parseValue($vfis);
-                                        if ($vfisk === 0) {
-                                            $innerSql = " (not find_in_set({$vfis},{$field})";
-                                        } else {
-                                            $innerSql .= " and not find_in_set({$vfis},{$field})";
-                                        }
-                                    }
-                                }
-                                $innerSql .= ")";
-                            } else {
-                                $isContinue = true;
-                            }
-                            break;
-                        case self::any:
-                            $this->askType(Type::PGSQL, $v['operat']);
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->parseValue($value);
-                            $value = (array)$value;
-                            array_walk($value, function (&$value) {
-                                $value = "({$value})";
-                            });
-                            $value = implode(',', $value);
-                            $innerSql .= " = any (values {$value})";
-                            break;
-                        case self::contains:
-                            $this->askType(Type::PGSQL, $v['operat']);
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->toPGArray((array)$value, str_replace('[]', '', $ft_type));
-                            $value = $this->parseValue($value);
-                            $innerSql .= " @> {$value}";
-                            break;
-                        case self::isContainsBy:
-                            $this->askType(Type::PGSQL, $v['operat']);
-                            $value = $this->parseWhereByFieldType($v['value'], $ft_type);
-                            $value = $this->toPGArray((array)$value, str_replace('[]', '', $ft_type));
-                            $value = $this->parseValue($value);
-                            $innerSql .= " <@ {$value}";
-                            break;
-                        default:
-                            $isContinue = true;
-                            break;
-                    }
-                    if ($isContinue) continue;
-                    $sql .= $sql ? " {$cond}{$innerSql} " : $innerSql;
-                }
-            }
-        }
-        return $sql;
-    }
-
-    /**
-     * 清理where条件
-     * @return $this
-     */
-    public function clearWhere()
-    {
-        $this->where = array();
-        $this->where_table = '';
-        return $this;
-    }
-
-    /**
-     * 锁定为哪一个表的搜索条件
-     * @param $table
-     * @return $this
-     */
-    public function whereTable($table)
-    {
-        $this->where_table = $table;
-        return $this;
-    }
-
-    /**
-     * 替换SQL语句中表达式
-     * @access private
-     * @param string $sql
-     * @param array $options 表达式
-     * @return string
-     */
-    protected function parseSql($sql, $options = array())
-    {
-        switch ($this->db_type) {
+        $table = !empty($this->options['table_origin']) ? $this->options['table_origin'] : $table;
+        $sql = $this->options['select_sql'];
+        switch ($this->options['db_type']) {
             case Type::MYSQL:
             case Type::SQLITE:
                 $sql = str_replace(
-                    array('%TABLE%', '%ALIA%', '%DISTINCT%', '%FIELD%', '%JOIN%', '%WHERE%', '%GROUP%', '%HAVING%', '%ORDER%', '%LIMIT%', '%UNION%', '%LOCK%', '%COMMENT%', '%FORCE%'),
+                    array('%TABLE%', '%ALIA%', '%DISTINCT%', '%FIELD%', '%JOIN%', '%WHERE%', '%GROUP%', '%HAVING%', '%ORDER%', '%LIMIT%', '%LOCK%', '%COMMENT%', '%FORCE%'),
                     array(
-                        $this->parseTable(!empty($options['table_origin']) ? $options['table_origin'] : (isset($options['table']) ? $options['table'] : false)),
-                        !empty($options['table_origin']) ? $this->parseTable(' AS ' . $options['table']) : null,
-                        $this->parseDistinct(isset($options['distinct']) ? $options['distinct'] : false),
-                        $this->parseField(!empty($options['field']) ? $options['field'] : '*'),
-                        $this->parseJoin(!empty($options['join']) ? $options['join'] : ''),
-                        $this->parseWhere(!empty($options['where']) ? $options['where'] : ''),
-                        $this->parseGroupBy(!empty($options['group']) ? $options['group'] : ''),
-                        $this->parseHaving(!empty($options['having']) ? $options['having'] : ''),
-                        $this->parseOrderBy(!empty($options['order']) ? $options['order'] : ''),
-                        $this->parseLimit(!empty($options['limit']) ? $options['limit'] : ''),
-                        $this->parseUnion(!empty($options['union']) ? $options['union'] : ''),
-                        $this->parseLock(isset($options['lock']) ? $options['lock'] : false),
-                        $this->parseComment(!empty($options['comment']) ? $options['comment'] : ''),
-                        $this->parseForce(!empty($options['force']) ? $options['force'] : '')
+                        $this->parseTable($table),
+                        !empty($this->options['table_origin']) ? $this->parseTable(' AS ' . $this->options['table']) : null,
+                        $this->parseDistinct(isset($this->options['distinct']) ? $this->options['distinct'] : false),
+                        $this->parseField(!empty($this->options['field']) ? $this->options['field'] : '*'),
+                        $this->parseJoin(!empty($this->options['join']) ? $this->options['join'] : ''),
+                        $this->where ? $this->parseWhere() : '',
+                        $this->parseGroupBy(!empty($this->options['group']) ? $this->options['group'] : ''),
+                        $this->parseHaving(!empty($this->options['having']) ? $this->options['having'] : ''),
+                        $this->parseOrderBy(!empty($this->options['order']) ? $this->options['order'] : ''),
+                        $this->parseLimit(!empty($this->options['limit']) ? $this->options['limit'] : ''),
+                        $this->parseLock(isset($this->options['lock']) ? $this->options['lock'] : false),
+                        $this->parseComment(!empty($this->options['comment']) ? $this->options['comment'] : ''),
+                        $this->parseForce(!empty($this->options['force']) ? $this->options['force'] : '')
                     ), $sql);
                 break;
             case Type::PGSQL:
                 $sql = str_replace(
-                    array('%SCHEMAS%', '%TABLE%', '%ALIA%', '%DISTINCT%', '%FIELD%', '%JOIN%', '%WHERE%', '%GROUP%', '%HAVING%', '%ORDER%', '%LIMIT%', '%UNION%', '%LOCK%', '%COMMENT%', '%FORCE%'),
+                    array('%SCHEMAS%', '%TABLE%', '%ALIA%', '%DISTINCT%', '%FIELD%', '%JOIN%', '%WHERE%', '%GROUP%', '%HAVING%', '%ORDER%', '%LIMIT%', '%LOCK%', '%COMMENT%', '%FORCE%'),
                     array(
-                        $this->parseSchemas(isset($options['schemas']) ? $options['schemas'] : false),
-                        $this->parseTable(!empty($options['table_origin']) ? $options['table_origin'] : (isset($options['table']) ? $options['table'] : false)),
-                        !empty($options['table_origin']) ? $this->parseTable(' AS ' . $options['table']) : null,
-                        $this->parseDistinct(isset($options['distinct']) ? $options['distinct'] : false),
-                        $this->parseField(!empty($options['field']) ? $options['field'] : '*'),
-                        $this->parseJoin(!empty($options['join']) ? $options['join'] : ''),
-                        $this->parseWhere(!empty($options['where']) ? $options['where'] : ''),
-                        $this->parseGroupBy(!empty($options['group']) ? $options['group'] : ''),
-                        $this->parseHaving(!empty($options['having']) ? $options['having'] : ''),
-                        $this->parseOrderBy(!empty($options['order']) ? $options['order'] : ''),
-                        $this->parseLimit(!empty($options['limit']) ? $options['limit'] : ''),
-                        $this->parseUnion(!empty($options['union']) ? $options['union'] : ''),
-                        $this->parseLock(isset($options['lock']) ? $options['lock'] : false),
-                        $this->parseComment(!empty($options['comment']) ? $options['comment'] : ''),
-                        $this->parseForce(!empty($options['force']) ? $options['force'] : '')
+                        $this->parseSchemas($this->options['schemas'] ?? false),
+                        $this->parseTable(!empty($this->options['table_origin']) ? $this->options['table_origin'] : (isset($this->options['table']) ? $this->options['table'] : false)),
+                        !empty($this->options['table_origin']) ? $this->parseTable(' AS ' . $this->options['table']) : null,
+                        $this->parseDistinct(isset($this->options['distinct']) ? $this->options['distinct'] : false),
+                        $this->parseField(!empty($this->options['field']) ? $this->options['field'] : '*'),
+                        $this->parseJoin(!empty($this->options['join']) ? $this->options['join'] : ''),
+                        $this->where ? $this->parseWhere() : '',
+                        $this->parseGroupBy(!empty($this->options['group']) ? $this->options['group'] : ''),
+                        $this->parseHaving(!empty($this->options['having']) ? $this->options['having'] : ''),
+                        $this->parseOrderBy(!empty($this->options['order']) ? $this->options['order'] : ''),
+                        $this->parseLimit(!empty($this->options['limit']) ? $this->options['limit'] : ''),
+                        $this->parseLock(isset($this->options['lock']) ? $this->options['lock'] : false),
+                        $this->parseComment(!empty($this->options['comment']) ? $this->options['comment'] : ''),
+                        $this->parseForce(!empty($this->options['force']) ? $this->options['force'] : '')
                     ), $sql);
                 break;
             case Type::MSSQL:
                 $sql = str_replace(
-                    array('%SCHEMAS%', '%TABLE%', '%ALIA%', '%DISTINCT%', '%FIELD%', '%JOIN%', '%WHERE%', '%GROUP%', '%HAVING%', '%ORDER%', '%LIMIT%', '%OFFSET%', '%UNION%', '%LOCK%', '%COMMENT%', '%FORCE%'),
+                    array('%SCHEMAS%', '%TABLE%', '%ALIA%', '%DISTINCT%', '%FIELD%', '%JOIN%', '%WHERE%', '%GROUP%', '%HAVING%', '%ORDER%', '%LIMIT%', '%OFFSET%', '%LOCK%', '%COMMENT%', '%FORCE%'),
                     array(
-                        $this->parseSchemas(isset($options['schemas']) ? $options['schemas'] : false),
-                        $this->parseTable(!empty($options['table_origin']) ? $options['table_origin'] : (isset($options['table']) ? $options['table'] : false)),
-                        !empty($options['table_origin']) ? $this->parseTable(' AS ' . $options['table']) : null,
-                        $this->parseDistinct(isset($options['distinct']) ? $options['distinct'] : false),
-                        $this->parseField(!empty($options['field']) ? $options['field'] : '*'),
-                        $this->parseJoin(!empty($options['join']) ? $options['join'] : ''),
-                        $this->parseWhere(!empty($options['where']) ? $options['where'] : ''),
-                        $this->parseGroupBY(!empty($options['group']) ? $options['group'] : ''),
-                        $this->parseHaving(!empty($options['having']) ? $options['having'] : ''),
-                        $this->parseOrderBY(!empty($options['order']) ? $options['order'] : ''),
-                        $this->parseLimit(!empty($options['limit']) ? $options['limit'] : ''),
-                        $this->parseOffset(!empty($options['offset']) ? $options['offset'] : ''),
-                        $this->parseUnion(!empty($options['union']) ? $options['union'] : ''),
-                        $this->parseLock(isset($options['lock']) ? $options['lock'] : false),
-                        $this->parseComment(!empty($options['comment']) ? $options['comment'] : ''),
-                        $this->parseForce(!empty($options['force']) ? $options['force'] : '')
+                        $this->parseSchemas($this->options['schemas'] ?? false),
+                        $this->parseTable(!empty($this->options['table_origin']) ? $this->options['table_origin'] : (isset($this->options['table']) ? $this->options['table'] : false)),
+                        !empty($this->options['table_origin']) ? $this->parseTable(' AS ' . $this->options['table']) : null,
+                        $this->parseDistinct(isset($this->options['distinct']) ? $this->options['distinct'] : false),
+                        $this->parseField(!empty($this->options['field']) ? $this->options['field'] : '*'),
+                        $this->parseJoin(!empty($this->options['join']) ? $this->options['join'] : ''),
+                        $this->where ? $this->parseWhere() : '',
+                        $this->parseGroupBY(!empty($this->options['group']) ? $this->options['group'] : ''),
+                        $this->parseHaving(!empty($this->options['having']) ? $this->options['having'] : ''),
+                        $this->parseOrderBY(!empty($this->options['order']) ? $this->options['order'] : ''),
+                        $this->parseLimit(!empty($this->options['limit']) ? $this->options['limit'] : ''),
+                        $this->parseOffset(!empty($this->options['offset']) ? $this->options['offset'] : ''),
+                        $this->parseLock(isset($this->options['lock']) ? $this->options['lock'] : false),
+                        $this->parseComment(!empty($this->options['comment']) ? $this->options['comment'] : ''),
+                        $this->parseForce(!empty($this->options['force']) ? $this->options['force'] : '')
                     ), $sql);
                 break;
             default:
-                Exception::database("ParseSql not support {$this->db_type} yet");
+                Exception::database("ParseSql not support {$this->options['db_type']} yet");
                 break;
         }
         return $sql;
-    }
-
-    /**
-     * 条件闭包
-     * @param string $cond 'and' || 'or'
-     * @param bool $isGlobal 'field or total'
-     * @return $this
-     */
-    public function closure(string $cond = 'and', bool $isGlobal = false)
-    {
-        if ($this->where) {
-            $o = array();
-            $f = array();
-            foreach ($this->where as $v) {
-                if ($v['operat'] === 'closure') {
-                    $o[] = $v;
-                } elseif ($v['field']) {
-                    $f[] = $v;
-                }
-            }
-            if ($o && $f) {
-                if ($isGlobal === false) {
-                    $this->where = $o;
-                    $this->where[] = array('operat' => 'closure', 'cond' => $cond, 'closure' => $f);
-                } else {
-                    $this->where = array(array('operat' => 'closure', 'cond' => $cond, 'closure' => array_merge($o, $f)));
-                }
-            } elseif ($o && !$f) {
-                $this->where = array(array('operat' => 'closure', 'cond' => $cond, 'closure' => $this->where));
-            } elseif (!$o && $f) {
-                $this->where = array(array('operat' => 'closure', 'cond' => $cond, 'closure' => $f));
-            }
-        }
-        return $this;
     }
 
     /**
@@ -1447,7 +940,7 @@ abstract class AbstractPDO extends AbstractDB
     public function query($query = '', $fetchMode = PDO::FETCH_ASSOC)
     {
         $query = trim($query);
-        if ($this->fetchQuery === true) {
+        if ($this->options['fetch_query'] === true) {
             return $query;
         }
         $table = $this->getTable();
@@ -1513,8 +1006,9 @@ abstract class AbstractPDO extends AbstractDB
      * @param string | null $table
      * @param null $function
      * @return $this
+     * @throws Exception\DatabaseException
      */
-    public function field($field, $table = null, $function = null)
+    protected function field($field, $table = null, $function = null)
     {
         if ($table === null) {
             $table = $this->getTable();
@@ -1569,7 +1063,7 @@ abstract class AbstractPDO extends AbstractDB
                     // check function
                     $tempParseTableForm = $parseTable . '.' . $from;
                     if ($function) {
-                        if ($this->db_type === Type::PGSQL) {
+                        if ($this->options['db_type'] === Type::PGSQL) {
                             $func3 = strtoupper(substr($function, 0, 3));
                             switch ($func3) {
                                 case 'SUM':
@@ -1592,7 +1086,7 @@ abstract class AbstractPDO extends AbstractDB
                 }
             }
             if (!isset($this->options['field'])) {
-                $this->options['field'] = array();
+                $this->options['field'] = [];
             }
             $this->options['field'] = array_merge_recursive($this->options['field'], $field);
         }

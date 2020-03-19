@@ -11,14 +11,12 @@ class RedisCo extends Redis
 
     /**
      * 架构函数 取得模板对象实例
-     * @access public
      * @param array $setting
-     * @throws Exception\DatabaseException
      */
     public function __construct(array $setting)
     {
+        $options['db_type'] = Type::REDIS_CO;
         parent::__construct($setting);
-        return $this;
     }
 
     /**

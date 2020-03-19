@@ -6,69 +6,32 @@
 
 namespace Yonna\Database\Driver;
 
-use Yonna\Database\Driver\Mysql\Table;
+use Yonna\Database\Driver\Pdo\Table;
 
-class Mysql
+class Mysql extends AbstractPDO
 {
 
-    private $setting = null;
-    private $options = null;
-
-    /**
-     * 构造方法
-     *
-     * @param array $setting
-     */
-    public function __construct(array $setting)
+    public function __construct(array $options)
     {
-        $this->setting = $setting;
-        $this->options = [];
+        $options['db_type'] = Type::MYSQL;
+        $options['charset'] = $options['charset'] ?: 'utf8mb4';
+        $options['select_sql'] = 'SELECT%DISTINCT% %FIELD% FROM %TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%LIMIT% %LOCK%%COMMENT%';
+        parent::__construct($options);
     }
 
     /**
-     * 析构方法
-     * @access public
+     * @return mixed
      */
-    public function __destruct()
+    public function now()
     {
-        $this->setting = null;
-        $this->options = null;
+        return parent::now();
     }
 
     /**
+     * @param $table
      * @return Table|null
      */
-    private function __next()
-    {
-        return new Table($this->setting, $this->options);
-    }
-
-    /**
-     * 当前时间（只能用于insert 和 update）
-     * @return array
-     */
-    public function now(): array
-    {
-        return ['exp', 'now()'];
-    }
-
-    /**
-     * @param $sql
-     * @return mixed
-     * @throws null
-     */
-    public function query($sql)
-    {
-        return $this->__next()->query($sql);
-    }
-
-    /**
-     * 哪个表
-     *
-     * @param string $table
-     * @return Table
-     */
-    public function table($table)
+    public function table(string $table): Table
     {
         $table = str_replace([' as ', ' AS ', ' As ', ' aS ', ' => '], ' ', trim($table));
         $tableEX = explode(' ', $table);
@@ -83,7 +46,7 @@ class Mysql
             $this->options['table'] = $table;
             $this->options['table_origin'] = null;
         }
-        return $this->__next();
+        return new Table($this->options);
     }
 
 }

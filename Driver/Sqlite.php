@@ -17,12 +17,11 @@ class Sqlite
     /**
      * 构造方法
      *
-     * @param array $setting
+     * @param array $options
      */
-    public function __construct(array $setting)
+    public function __construct(array $options)
     {
-        $this->setting = $setting;
-        $this->options = [];
+        $this->options = $options;
     }
 
     /**
