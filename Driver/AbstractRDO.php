@@ -10,8 +10,6 @@ use Yonna\Throwable\Exception\DatabaseException;
 abstract class AbstractRDO extends AbstractDB
 {
 
-    protected $db_type = Type::REDIS;
-
     const TYPE_OBJ = 'o';
     const TYPE_STR = 's';
     const TYPE_NUM = 'n';
@@ -56,7 +54,6 @@ abstract class AbstractRDO extends AbstractDB
      * 获取 RDO
      * @param bool $force_new
      * @return Redis | SwRedis
-     * @throws DatabaseException
      */
     protected function rdo($force_new = false)
     {

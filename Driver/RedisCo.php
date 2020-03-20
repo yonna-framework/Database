@@ -7,8 +7,6 @@ use Yonna\Throwable\Exception;
 class RedisCo extends Redis
 {
 
-    protected $db_type = Type::REDIS_CO;
-
     /**
      * 架构函数 取得模板对象实例
      * @param array $setting
