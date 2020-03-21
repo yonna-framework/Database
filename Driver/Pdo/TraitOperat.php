@@ -3,6 +3,7 @@
 namespace Yonna\Database\Driver\Pdo;
 
 use Yonna\Throwable\Exception;
+use Yonna\Database\Driver\Type;
 
 /**
  * Trait TraitOperat
@@ -23,7 +24,20 @@ trait TraitOperat
         if (is_null($length) && strpos($offset, ',')) {
             list($offset, $length) = explode(',', $offset);
         }
-        $this->options['limit'] = ($length ? intval($length) . ' OFFSET ' : '') . intval($offset);
+        switch ($this->options['db_type']) {
+            case Type::MSSQL:
+                if ($length === null) {
+                    $this->options['limit'] = $offset;
+                    $this->options['offset'] = null;
+                } else {
+                    $this->options['limit'] = $length;
+                    $this->options['offset'] = $offset;
+                }
+                break;
+            default:
+                $this->options['limit'] = ($length ? intval($length) . ' OFFSET ' : '') . intval($offset);
+                break;
+        }
         return $this;
     }
 
@@ -62,20 +76,21 @@ trait TraitOperat
         $this->limit($offset, $limit);
 
         $sql = $this->buildSelectSql();
-        $options['order'] = null;
-        $options['limit'] = 1;
-        if (!empty($options['group'])) {
-            $options['field'] = 'count(DISTINCT ' . $options['group'] . ') as "hcount"';
-            $options['group'] = null;
+        $this->options['order'] = null;
+        $this->options['limit'] = 1;
+        $this->options['offset'] = 0;
+        if (!empty($this->options['group'])) {
+            $this->options['field'] = 'count(DISTINCT ' . $this->options['group'] . ') as "hcount"';
+            $this->options['group'] = null;
         } else {
-            $options['field'] = 'count(0) as "hcount"';
+            $this->options['field'] = 'count(0) as "hcount"';
         }
         $sqlCount = $this->buildSelectSql();
         $data = $this->query($sql);
         $count = $this->query($sqlCount);
         $count = reset($count)['hcount'];
         $count = (int)$count;
-        $result = array();
+        $result = [];
         $per = !$per ? 10 : $per;
         $last = ceil($count / $per);
         $result['list'] = $data;

@@ -3,6 +3,7 @@
 namespace Yonna\Database\Driver\Pdo;
 
 use Yonna\Database\Driver\AbstractPDO;
+use Yonna\Database\Driver\Type;
 use Yonna\Throwable\Exception;
 
 /**
@@ -17,9 +18,16 @@ class Table extends AbstractPDO
     /**
      * Table constructor.
      * @param array $options
+     * @throws null
      */
     public function __construct(array $options)
     {
+        if ($options['db_type'] === Type::PGSQL || $options['db_type'] === Type::MSSQL) {
+            $this->options['schemas'] = $options['schemas'] ?? null;
+            if ($this->options['schemas'] === null) {
+                Exception::database($options['db_type'] . ' should set schemas');
+            }
+        }
         parent::__construct($options);
     }
 

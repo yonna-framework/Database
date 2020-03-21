@@ -1,36 +1,23 @@
 <?php
+
+namespace Yonna\Database\Driver\Pdo;
+
+use Yonna\Database\Driver\AbstractPDO;
+
 /**
- * 数据库连接类，依赖 PDO_PGSQL 扩展
- * version > 9.7
+ * Class Table
+ * @package Yonna\Database\Driver\Pdo
  */
-
-namespace Yonna\Database\Driver\Pgsql;
-
-class Schemas
+class Schemas extends AbstractPDO
 {
 
-    private $setting = null;
-    private $options = null;
-
     /**
-     * Schemas constructor.
-     * @param array $setting
+     * Table constructor.
      * @param array $options
      */
-    public function __construct(array $setting, array $options)
+    public function __construct(array $options)
     {
-        $this->setting = $setting;
-        $this->options = $options;
-    }
-
-    /**
-     * 析构方法
-     * @access public
-     */
-    public function __destruct()
-    {
-        $this->setting = null;
-        $this->options = null;
+        parent::__construct($options);
     }
 
     /**
@@ -54,7 +41,7 @@ class Schemas
             $this->options['table'] = $table;
             $this->options['table_origin'] = null;
         }
-        return (new Table($this->setting, $this->options));
+        return new Table($this->options);
     }
 
 }

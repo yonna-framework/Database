@@ -32,7 +32,7 @@ class Config
     /**
      * @param string $tag
      * @param array $setting
-     * @throws Exception
+     * @throws null
      */
     private static function set(string $tag, array $setting)
     {
@@ -44,6 +44,7 @@ class Config
         $name = $setting['name'] ?? null;
         $replica = $setting['replica'] ?? null;
         $charset = $setting['charset'] ?? null;
+        $schemas = $setting['schemas'] ?? null;
         $project_key = isset($setting['project_key']) ? strtolower($setting['project_key']) : null;
         $auto_cache = isset($setting['auto_cache']) ? strtolower($setting['auto_cache']) : false;
         $auto_crypto = isset($setting['auto_crypto']) ? strtolower($setting['auto_crypto']) : false;
@@ -108,6 +109,7 @@ class Config
             'name' => $name,
             'replica' => $replica,
             'charset' => $charset,
+            'schemas' => $schemas,
             'project_key' => $project_key,
             'auto_cache' => $auto_cache,
             'auto_crypto' => $auto_crypto,
