@@ -6,12 +6,11 @@
 
 namespace Yonna\Database\Driver;
 
-use Yonna\Database\Driver\Sqlite\Table;
+use Yonna\Database\Driver\Pdo\Table;
 
-class Sqlite
+class Sqlite extends AbstractPDO
 {
 
-    private $setting = null;
     private $options = null;
 
     /**
@@ -21,16 +20,18 @@ class Sqlite
      */
     public function __construct(array $options)
     {
-        $this->options = $options;
+        $options['db_type'] = Type::SQLITE;
+        $options['charset'] = $options['charset'] ?: 'utf8';
+        $options['select_sql'] = 'SELECT%DISTINCT% %FIELD% FROM %TABLE% %ALIA% %FORCE%%JOIN%%WHERE%%GROUP%%HAVING%%ORDER%%LIMIT% %LOCK%%COMMENT%';
+        parent::__construct($options);
     }
 
     /**
-     * 当前时间（只能用于insert 和 update）
-     * @return array
+     * @return mixed
      */
-    public function now(): array
+    public function now()
     {
-        return ['exp', "select datetime(CURRENT_TIMESTAMP,'localtime')"];
+        return parent::now();
     }
 
     /**
@@ -54,7 +55,7 @@ class Sqlite
             $this->options['table'] = $table;
             $this->options['table_origin'] = null;
         }
-        return (new Table($this->setting, $this->options));
+        return new Table($this->options);
     }
 
 }
