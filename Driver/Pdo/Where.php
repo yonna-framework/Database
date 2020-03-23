@@ -45,10 +45,8 @@ class Where extends AbstractPDO
     const notBetween = 'notBetween';                        //在值之外
     const in = 'in';                                        //在或集
     const notIn = 'notIn';                                  //不在或集
-    const findInSetOr = 'findInSetOr';                      //findInSetOr (mysql)
-    const notFindInSetOr = 'notFindInSetOr';                //notFindInSetOr (mysql)
-    const findInSetAnd = 'findInSetAnd';                    //findInSetAnd (mysql)
-    const notFindInSetAnd = 'notFindInSetAnd';              //notFindInSetAnd (mysql)
+    const findInSet = 'findInSet';                          //findInSet (mysql)
+    const notFindInSet = 'notFindInSet';                    //notFindInSet (mysql)
     const any = 'any';                                      //any (pgsql)
     const contains = 'contains';                            //contains (pgsql)
     const isContainsBy = 'isContainsBy';                    //isContainsBy (pgsql)
@@ -312,87 +310,21 @@ class Where extends AbstractPDO
                                     $value = implode(',', (array)$value);
                                     $innerSql .= " not in ({$value})";
                                     break;
-                                case self::findInSetOr:
+                                case self::findInSet:
                                     if ($this->options['db_type'] !== Type::MYSQL) {
                                         Exception::database("{$v['operat']} not support {$this->options['db_type']}");
                                     }
-                                    if ($v['value']) {
-                                        $v['value'] = (array)$v['value'];
-                                        foreach ($v['value'] as $vfisk => $vfis) {
-                                            if ($vfis) {
-                                                $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                                $vfis = $this->parseValue($vfis);
-                                                if ($vfisk === 0) {
-                                                    $innerSql = " (find_in_set({$vfis},{$field})";
-                                                } else {
-                                                    $innerSql .= " or find_in_set({$vfis},{$field})";
-                                                }
-                                            }
-                                        }
-                                        $innerSql .= ")";
-                                    } else {
-                                        $notLinkSql = true;
-                                    }
+                                    $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                    $value = $this->parseValue($value);
+                                    $innerSql = " find_in_set({$value},{$field})";
                                     break;
-                                case self::notFindInSetOr:
-                                    $this->askType(Type::MYSQL, $v['operat']);
-                                    if ($v['value']) {
-                                        $v['value'] = (array)$v['value'];
-                                        foreach ($v['value'] as $vfisk => $vfis) {
-                                            if ($vfis) {
-                                                $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                                $vfis = $this->parseValue($vfis);
-                                                if ($vfisk === 0) {
-                                                    $innerSql = " (not find_in_set({$vfis},{$field})";
-                                                } else {
-                                                    $innerSql .= " or not find_in_set({$vfis},{$field})";
-                                                }
-                                            }
-                                        }
-                                        $innerSql .= ")";
-                                    } else {
-                                        $notLinkSql = true;
+                                case self::notFindInSet:
+                                    if ($this->options['db_type'] !== Type::MYSQL) {
+                                        Exception::database("{$v['operat']} not support {$this->options['db_type']}");
                                     }
-                                    break;
-                                case self::findInSetAnd:
-                                    $this->askType(Type::MYSQL, $v['operat']);
-                                    if ($v['value']) {
-                                        $v['value'] = (array)$v['value'];
-                                        foreach ($v['value'] as $vfisk => $vfis) {
-                                            if ($vfis) {
-                                                $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                                $vfis = $this->parseValue($vfis);
-                                                if ($vfisk === 0) {
-                                                    $innerSql = " (find_in_set({$vfis},{$field})";
-                                                } else {
-                                                    $innerSql .= " and find_in_set({$vfis},{$field})";
-                                                }
-                                            }
-                                        }
-                                        $innerSql .= ")";
-                                    } else {
-                                        $notLinkSql = true;
-                                    }
-                                    break;
-                                case self::notFindInSetAnd:
-                                    $this->askType(Type::MYSQL, $v['operat']);
-                                    if ($v['value']) {
-                                        $v['value'] = (array)$v['value'];
-                                        foreach ($v['value'] as $vfisk => $vfis) {
-                                            if ($vfis) {
-                                                $vfis = $this->parseWhereByFieldType($vfis, $ft_type);
-                                                $vfis = $this->parseValue($vfis);
-                                                if ($vfisk === 0) {
-                                                    $innerSql = " (not find_in_set({$vfis},{$field})";
-                                                } else {
-                                                    $innerSql .= " and not find_in_set({$vfis},{$field})";
-                                                }
-                                            }
-                                        }
-                                        $innerSql .= ")";
-                                    } else {
-                                        $notLinkSql = true;
-                                    }
+                                    $value = $this->parseWhereByFieldType($v['value'], $ft_type);
+                                    $value = $this->parseValue($value);
+                                    $innerSql = " not find_in_set({$value},{$field})";
                                     break;
                                 case self::any:
                                     $this->askType(Type::PGSQL, $v['operat']);
@@ -634,9 +566,9 @@ class Where extends AbstractPDO
      * @return $this
      */
     public
-    function findInSetOr($field, $value)
+    function findInSet($field, $value)
     {
-        return $this->where(self::findInSetOr, $field, $value);
+        return $this->where(self::findInSet, $field, $value);
     }
 
     /**
@@ -645,31 +577,9 @@ class Where extends AbstractPDO
      * @return $this
      */
     public
-    function notFindInSetOr($field, $value)
+    function notFindInSet($field, $value)
     {
-        return $this->where(self::notFindInSetOr, $field, $value);
-    }
-
-    /**
-     * @param $field
-     * @param $value
-     * @return $this
-     */
-    public
-    function findInSetAnd($field, $value)
-    {
-        return $this->where(self::findInSetAnd, $field, $value);
-    }
-
-    /**
-     * @param $field
-     * @param $value
-     * @return $this
-     */
-    public
-    function notFindInSetAnd($field, $value)
-    {
-        return $this->where(self::notFindInSetAnd, $field, $value);
+        return $this->where(self::notFindInSet, $field, $value);
     }
 
     /**
