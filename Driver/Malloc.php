@@ -8,7 +8,7 @@ use MongoDB\Driver\Manager as MongoManager;
 use Redis;
 use Swoole\Coroutine\Redis as SwRedis;
 use Throwable;
-use Yonna\Database\Driver\Mongo\Client as MongoClient;
+use Yonna\Database\Driver\Mdo\Client as MongoClient;
 use Yonna\Database\Support\Transaction;
 use Yonna\Throwable\Exception;
 
@@ -46,7 +46,6 @@ class Malloc
     {
         $dsn = $params['dsn'];
         $dbType = $params['db_type'];
-
         $instance = null;
         try {
             switch ($dbType) {

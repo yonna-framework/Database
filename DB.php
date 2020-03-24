@@ -110,6 +110,7 @@ class DB
     /**
      * @param string $conf
      * @return object|Mongo|Mssql|Mysql|Pgsql|Redis|Sqlite
+     * @throws null
      */
     public static function connect($conf = 'default')
     {

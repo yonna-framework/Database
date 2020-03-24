@@ -14,7 +14,7 @@ class Type extends Mapping
     const PGSQL = 'Pgsql';
     const MSSQL = 'Mssql';
     const SQLITE = 'Sqlite';
-    const MONGO = 'Mdo';
+    const MONGO = 'Mongo';
     const REDIS = 'Redis';
     const REDIS_CO = 'RedisCo';
 

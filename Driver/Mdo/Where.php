@@ -20,7 +20,7 @@ class Where extends AbstractMDO
      * filter -> where
      * @var array
      */
-    private $filter = [];
+    protected $filter = [];
 
     /**
      * where条件对象，实现闭包

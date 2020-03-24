@@ -7,7 +7,7 @@ use PDO;
 use PDOException;
 use Redis;
 use Swoole\Coroutine\Redis as SwRedis;
-use Yonna\Database\Driver\Mongo\Client as MongoClient;
+use Yonna\Database\Driver\Mdo\Client as MongoClient;
 use Yonna\Throwable\Exception;
 
 /**

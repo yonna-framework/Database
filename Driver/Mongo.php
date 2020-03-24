@@ -15,7 +15,7 @@ class Mongo extends AbstractMDO
      */
     public function __construct(array $options)
     {
-        $options['db_type'] = Type::MSSQL;
+        $options['db_type'] = Type::MONGO;
         parent::__construct($options);
     }
 
