@@ -7,7 +7,6 @@
 namespace Yonna\Database\Driver\Mdo;
 
 use Yonna\Database\Driver\AbstractMDO;
-use Yonna\Throwable\Exception\DatabaseException;
 
 class Collection extends AbstractMDO
 {
@@ -74,16 +73,6 @@ class Collection extends AbstractMDO
     }
 
     /**
-     * @param int $limit
-     * @return Collection
-     */
-    public function limit(int $limit): self
-    {
-        $this->options['limit'] = $limit;
-        return $this;
-    }
-
-    /**
      * @param int $skip
      * @return Collection
      */
@@ -91,50 +80,6 @@ class Collection extends AbstractMDO
     {
         $this->options['skip'] = $skip;
         return $this;
-    }
-
-    /** final operation */
-
-    /**
-     * @return mixed
-     * @throws DatabaseException
-     */
-    public function multi()
-    {
-        return $this->query('select');
-    }
-
-    /**
-     * insert
-     * @param $data
-     * @return mixed
-     * @throws DatabaseException
-     */
-    public function insert($data)
-    {
-        $this->data = $data;
-        return $this->query('insert');
-    }
-
-    /**
-     * insert all
-     * @param $data
-     * @return mixed
-     * @throws DatabaseException
-     */
-    public function insertAll($data)
-    {
-        $this->data = $data;
-        return $this->query('insertAll');
-    }
-
-    /**
-     * insert all
-     * @return mixed
-     */
-    public function tt()
-    {
-        return $this->test();
     }
 
 }

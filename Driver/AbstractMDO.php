@@ -86,7 +86,7 @@ abstract class AbstractMDO extends AbstractDB
                     ];
                     */
                     $query = new Query($this->filter, $this->options);
-                    $cursor = $this->mdo()->getManager()->executeQuery($this->name . '.' . $this->collection, $query);
+                    $cursor = $this->mdo()->getManager()->executeQuery($this->name . '.' . $this->options['collection'], $query);
                     $result = [];
                     foreach ($cursor as $doc) {
                         var_dump($doc);
@@ -97,7 +97,7 @@ abstract class AbstractMDO extends AbstractDB
                     $sortStr = empty($this->options['sort']) ? '' : '.sort(' . json_encode($this->options['sort']) . ')';
                     $limitStr = empty($this->options['limit']) ? '' : '.limit(' . json_encode($this->options['limit']) . ')';
                     $skipStr = empty($this->options['skip']) ? '' : '.skip(' . json_encode($this->options['skip']) . ')';
-                    $commandStr = "db.{$this->collection}.find(";
+                    $commandStr = "db.{$this->options['collection']}.find(";
                     $commandStr .= $filterStr . $projectionStr;
                     $commandStr .= ')';
                     $commandStr .= $sortStr;
@@ -111,13 +111,13 @@ abstract class AbstractMDO extends AbstractDB
                     }
                     $bulk = new BulkWrite();
                     $bulk->insert($this->data);
-                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $mdoOps);
+                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->options['collection'], $bulk, $mdoOps);
                     $result = [
                         'ids' => $result->getUpsertedIds(),
                         'insert_count' => $result->getInsertedCount(),
                         'bulk_count' => $bulk->count(),
                     ];
-                    $commandStr = "db.{$this->collection}.insertOne(" . json_encode($this->data, JSON_UNESCAPED_UNICODE) . ')';
+                    $commandStr = "db.{$this->options['collection']}.insertOne(" . json_encode($this->data, JSON_UNESCAPED_UNICODE) . ')';
                     break;
                 case 'insertAll':
                     if (empty($this->data)) {
@@ -127,13 +127,13 @@ abstract class AbstractMDO extends AbstractDB
                     foreach ($this->data as $d) {
                         $bulk->insert($d);
                     }
-                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->collection, $bulk, $mdoOps);
+                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->options['collection'], $bulk, $mdoOps);
                     $result = [
                         'ids' => $result->getUpsertedIds(),
                         'insert_count' => $result->getInsertedCount(),
                         'bulk_count' => $bulk->count(),
                     ];
-                    $commandStr = "db.{$this->collection}.insertMany(" . json_encode($this->data, JSON_UNESCAPED_UNICODE) . ')';
+                    $commandStr = "db.{$this->options['collection']}.insertMany(" . json_encode($this->data, JSON_UNESCAPED_UNICODE) . ')';
                     break;
             }
         } catch (BulkWriteException $e) {
@@ -143,19 +143,6 @@ abstract class AbstractMDO extends AbstractDB
         }
         parent::query($commandStr);
         return $result;
-    }
-
-
-    public function test()
-    {
-        $query = ["_id" => ['$gte' => 0]];
-        $cmd = new Command([
-            'distinct' => 'color',
-            'key' => 'color',
-            'query' => $query
-        ]);
-        print_r($cmd);
-        $row = $this->mdo()->getManager()->executeCommand("yonna", $cmd);
     }
 
 }
