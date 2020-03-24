@@ -319,7 +319,7 @@ abstract class AbstractDB
                     $params = $this->master;
                 } else {
                     if (!$this->replica) {
-                        Exception::database('Mongo replicaSet not replica config');
+                        Exception::database('Mdo replicaSet not replica config');
                     }
                     $params = $this->master;
                     $params['dsn'] = "mongodb://{$this->master['account']}:{$this->master['password']}@";

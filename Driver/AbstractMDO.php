@@ -6,17 +6,11 @@ use MongoDB\Driver\Query;
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\Command;
 use MongoDB\Driver\Exception\BulkWriteException;
-use Yonna\Database\Driver\Mongo\Client;
+use Yonna\Database\Driver\Mdo\Client;
 use Yonna\Throwable\Exception;
 
 abstract class AbstractMDO extends AbstractDB
 {
-
-    /**
-     * @var string
-     */
-    protected $collection = null;
-
 
     /**
      * filter -> where
@@ -24,65 +18,19 @@ abstract class AbstractMDO extends AbstractDB
      */
     protected $filter = [];
 
-
-    /**
-     * @var array
-     */
-    protected $options = [];
-
     /**
      * @var array
      */
     protected $data = [];
 
-
-    /**
-     * where 条件类型设置
-     */
-    const equalTo = 'equalTo';                              //等于
-    const notEqualTo = 'notEqualTo';                        //不等于
-    const greaterThan = 'greaterThan';                      //大于
-    const greaterThanOrEqualTo = 'greaterThanOrEqualTo';    //大于等于
-    const lessThan = 'lessThan';                            //小于
-    const lessThanOrEqualTo = 'lessThanOrEqualTo';          //小于等于
-    const like = 'like';                                    //包含
-    const notLike = 'notLike';                              //不包含
-    const isNull = 'isNull';                                //为空
-    const isNotNull = 'isNotNull';                          //不为空
-    const between = 'between';                              //在值之内
-    const notBetween = 'notBetween';                        //在值之外
-    const in = 'in';                                        //在或集
-    const notIn = 'notIn';                                  //不在或集
-
-    /**
-     * where 映射map
-     */
-    const operatVector = [
-        self::equalTo => '$eq',
-        self::notEqualTo => '$neq',
-        self::greaterThan => '$gt',
-        self::greaterThanOrEqualTo => '$gte',
-        self::lessThan => '$lt',
-        self::lessThanOrEqualTo => '$lte',
-        self::like => '$regex',
-        self::notLike => '$regex',
-        self::isNull => '$regex',
-        self::isNotNull => '$regex',
-        self::between => '$regex',
-        self::notBetween => '$regex',
-        self::in => '$in',
-        self::notIn => '$nin',
-    ];
-
     /**
      * 架构函数 取得模板对象实例
      * @access public
-     * @param array $setting
+     * @param array $options
      */
-    public function __construct(array $setting)
+    public function __construct(array $options)
     {
-        parent::__construct($setting);
-        $this->collection = $setting['collection'];
+        parent::__construct($options);
     }
 
     /**
@@ -107,26 +55,7 @@ abstract class AbstractMDO extends AbstractDB
      */
     public function getCollection()
     {
-        return $this->collection;
-    }
-
-    /**
-     * @param string $operat see self
-     * @param string $field
-     * @param null $value
-     * @return $this
-     */
-    protected function whereOperat($operat, $field, $value = null)
-    {
-        if ($operat == self::isNull || $operat == self::isNotNull || $value !== null) {//排除空值
-            if ($operat != self::like || $operat != self::notLike || ($value != '%' && $value != '%%')) {//排除空like
-                if (!isset($this->filter[$field])) {
-                    $this->filter[$field] = [];
-                }
-                $this->filter[$field][self::operatVector[$operat]] = $value;
-            }
-        }
-        return $this;
+        return $this->options['collection'];
     }
 
     /**

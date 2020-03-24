@@ -1,9 +1,9 @@
 <?php
 /**
- * Mongo DB Client
+ * Mdo DB Client
  */
 
-namespace Yonna\Database\Driver\Mongo;
+namespace Yonna\Database\Driver\Mdo;
 
 use MongoDB\Driver\Manager;
 use MongoDB\Driver\Session;

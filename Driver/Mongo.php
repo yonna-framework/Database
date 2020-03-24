@@ -2,31 +2,21 @@
 
 namespace Yonna\Database\Driver;
 
-use Yonna\Database\Driver\Mongo\Collection;
+use Yonna\Database\Driver\Mdo\Collection;
 use Yonna\Throwable\Exception;
 
-class Mongo
+class Mongo extends AbstractMDO
 {
-
-    private $setting = null;
 
     /**
      * 构造方法
      *
-     * @param array $setting
+     * @param array $options
      */
-    public function __construct(array $setting)
+    public function __construct(array $options)
     {
-        $this->setting = $setting;
-    }
-
-    /**
-     * 析构方法
-     * @access public
-     */
-    public function __destruct()
-    {
-        $this->setting = null;
+        $options['db_type'] = Type::MSSQL;
+        parent::__construct($options);
     }
 
     /**
@@ -39,8 +29,8 @@ class Mongo
         if (empty($collection)) {
             Exception::database('collection error');
         }
-        $this->setting['collection'] = $collection;
-        return (new Collection($this->setting));
+        $this->options['collection'] = $collection;
+        return (new Collection($this->options));
     }
 
 }

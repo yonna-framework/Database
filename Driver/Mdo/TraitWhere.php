@@ -1,12 +1,12 @@
 <?php
 
-namespace Yonna\Database\Driver\Pdo;
+namespace Yonna\Database\Driver\Mdo;
 
 use Closure;
 
 /**
  * Trait TraitWhere
- * @package Yonna\Database\Driver\Pdo
+ * @package Yonna\Database\Driver\Mdo
  */
 trait TraitWhere
 {
@@ -19,11 +19,6 @@ trait TraitWhere
             $this->__where = new Where($this->options);
         }
         return $this->__where;
-    }
-
-    public function searchTable($table)
-    {
-        return $this->__where()->searchTable($table);
     }
 
     public function equalTo($field, $value)
@@ -94,21 +89,6 @@ trait TraitWhere
     public function notIn($field, $value)
     {
         return $this->__where()->notIn($field, $value);
-    }
-
-    public function findInSet($field, $value)
-    {
-        return $this->__where()->findInSet($field, $value);
-    }
-
-    public function notFindInSet($field, $value)
-    {
-        return $this->__where()->notFindInSet($field, $value);
-    }
-
-    public function complex(array $whereSet, array $whereData)
-    {
-        return $this->__where()->complex($whereSet, $whereData);
     }
 
     public function and(Closure $cells)

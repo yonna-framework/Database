@@ -370,8 +370,7 @@ class Where extends AbstractPDO
      * 清理where条件
      * @return $this
      */
-    public
-    function clearWhere()
+    public function clearWhere()
     {
         $this->closure = [];
         $this->search_table = '';
@@ -382,8 +381,7 @@ class Where extends AbstractPDO
      * 获取条件闭包
      * @return array
      */
-    public
-    function getClosure()
+    public function getClosure()
     {
         return $this->closure;
     }
@@ -393,8 +391,7 @@ class Where extends AbstractPDO
      * @param $table
      * @return $this
      */
-    public
-    function searchTable($table)
+    public function searchTable($table)
     {
         $this->search_table = $table;
         return $this;
@@ -405,8 +402,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function equalTo($field, $value)
+    public function equalTo($field, $value)
     {
         return $this->where(self::equalTo, $field, $value);
     }
@@ -416,8 +412,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function notEqualTo($field, $value)
+    public function notEqualTo($field, $value)
     {
         return $this->where(self::notEqualTo, $field, $value);
     }
@@ -427,8 +422,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function greaterThan($field, $value)
+    public function greaterThan($field, $value)
     {
         return $this->where(self::greaterThan, $field, $value);
     }
@@ -438,8 +432,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function greaterThanOrEqualTo($field, $value)
+    public function greaterThanOrEqualTo($field, $value)
     {
         return $this->where(self::greaterThanOrEqualTo, $field, $value);
     }
@@ -449,8 +442,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function lessThan($field, $value)
+    public function lessThan($field, $value)
     {
         return $this->where(self::lessThan, $field, $value);
     }
@@ -460,8 +452,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function lessThanOrEqualTo($field, $value)
+    public function lessThanOrEqualTo($field, $value)
     {
         return $this->where(self::lessThanOrEqualTo, $field, $value);
     }
@@ -471,8 +462,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function like($field, $value)
+    public function like($field, $value)
     {
         return $this->where(self::like, $field, $value);
     }
@@ -482,8 +472,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function notLike($field, $value)
+    public function notLike($field, $value)
     {
         return $this->where(self::notLike, $field, $value);
     }
@@ -492,8 +481,7 @@ class Where extends AbstractPDO
      * @param $field
      * @return $this
      */
-    public
-    function isNull($field)
+    public function isNull($field)
     {
         return $this->where(self::isNull, $field);
     }
@@ -502,8 +490,7 @@ class Where extends AbstractPDO
      * @param $field
      * @return $this
      */
-    public
-    function isNotNull($field)
+    public function isNotNull($field)
     {
         return $this->where(self::isNotNull, $field);
     }
@@ -513,8 +500,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function between($field, $value)
+    public function between($field, $value)
     {
         if (is_string($value)) $value = explode(',', $value);
         if (!is_array($value)) $value = (array)$value;
@@ -529,8 +515,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function notBetween($field, $value)
+    public function notBetween($field, $value)
     {
         if (is_string($value)) $value = explode(',', $value);
         if (!is_array($value)) $value = (array)$value;
@@ -543,8 +528,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function in($field, $value)
+    public function in($field, $value)
     {
         return $this->where(self::in, $field, $value);
     }
@@ -554,8 +538,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function notIn($field, $value)
+    public function notIn($field, $value)
     {
         return $this->where(self::notIn, $field, $value);
     }
@@ -565,8 +548,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function findInSet($field, $value)
+    public function findInSet($field, $value)
     {
         return $this->where(self::findInSet, $field, $value);
     }
@@ -576,8 +558,7 @@ class Where extends AbstractPDO
      * @param $value
      * @return $this
      */
-    public
-    function notFindInSet($field, $value)
+    public function notFindInSet($field, $value)
     {
         return $this->where(self::notFindInSet, $field, $value);
     }
@@ -587,8 +568,7 @@ class Where extends AbstractPDO
      * @param array $data
      * @return $this
      */
-    public
-    function complex(array $set, array $data)
+    public function complex(array $set, array $data)
     {
         foreach ($set as $target => $actions) {
             $this->searchTable($target);
@@ -619,8 +599,7 @@ class Where extends AbstractPDO
      * @param string $where
      * @return $this
      */
-    public
-    function search(string $where)
+    public function search(string $where)
     {
         $this->closure[] = array('type' => 'string', 'value' => $where);
         return $this;
@@ -631,8 +610,7 @@ class Where extends AbstractPDO
      * @param Closure $cells
      * @return $this
      */
-    public
-    function and(Closure $cells)
+    public function and(Closure $cells)
     {
         $nw = new self($this->options);
         $cells($nw);
