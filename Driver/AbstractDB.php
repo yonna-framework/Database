@@ -6,6 +6,7 @@ use MongoDB\Driver\Command;
 use MongoDB\Driver\Server;
 use PDO;
 use Yonna\Database\Support\Record;
+use Yonna\Log\Log;
 use Yonna\Throwable\Exception;
 
 abstract class AbstractDB
@@ -392,6 +393,9 @@ abstract class AbstractDB
      */
     protected function query(string $query)
     {
+        if (getenv('IS_DEBUG') === 'true') {
+            Log::file()->info(['query' => $query], 'database_' . $this->options['db_type']);
+        }
         Record::add($this->options['db_type'], $this->last_connection, $query);
     }
 
@@ -402,6 +406,31 @@ abstract class AbstractDB
     {
         $this->options['fetch_query'] = true;
         return $this;
+    }
+
+    /**
+     * 当前时间（只能用于insert 和 update）
+     * @return mixed
+     */
+    protected function now()
+    {
+        $now = null;
+        switch ($this->options['db_type']) {
+            case Type::MYSQL:
+            case Type::PGSQL:
+                $now = ['exp', 'now()'];
+                break;
+            case Type::MSSQL:
+                $now = ['exp', "GETDATE()"];
+                break;
+            case Type::SQLITE:
+                $now = ['exp', "select datetime(CURRENT_TIMESTAMP,'localtime')"];
+                break;
+            default:
+                $now = date('Y-m-d H:i:s', time());
+                break;
+        }
+        return $now;
     }
 
 }

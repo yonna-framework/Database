@@ -2,13 +2,18 @@
 
 namespace Yonna\Database\Driver;
 
+use MongoDB\Driver\Command;
 use MongoDB\Driver\Query;
 use MongoDB\Driver\BulkWrite;
-use MongoDB\Driver\Command;
 use MongoDB\Driver\Exception\BulkWriteException;
 use Yonna\Database\Driver\Mdo\Client;
 use Yonna\Throwable\Exception;
 
+/**
+ * Class AbstractMDO
+ * @package Yonna\Database\Driver
+ * @see https://docs.mongodb.com/ecosystem/drivers/
+ */
 abstract class AbstractMDO extends AbstractDB
 {
 
@@ -59,6 +64,16 @@ abstract class AbstractMDO extends AbstractDB
     }
 
     /**
+     * where分析
+     * 这个where需要被继承的where覆盖才会有效
+     * @return object
+     */
+    protected function parseWhere()
+    {
+        return (object)[];
+    }
+
+    /**
      * 设置执行命令
      * @param $command
      * @return mixed
@@ -77,6 +92,15 @@ abstract class AbstractMDO extends AbstractDB
 
         try {
             switch ($command) {
+                case 'count':
+                    $command = new Command([
+                        'count' => $this->options['collection'],
+                        'query' => $this->parseWhere(),
+                    ]);
+                    $res = $this->mdo()->getManager()->executeCommand($this->name, $command);
+                    $res = current($res->toArray());
+                    $result = $res->n;
+                    break;
                 case 'select':
                     /*
                     $filter = ['x' => ['$gt' => 1]];
@@ -85,14 +109,18 @@ abstract class AbstractMDO extends AbstractDB
                         'sort' => ['x' => -1],
                     ];
                     */
-                    $query = new Query($this->filter, $this->options);
+                    $filter = $this->parseWhere();
+                    $query = new Query($filter, $this->options);
                     $cursor = $this->mdo()->getManager()->executeQuery($this->name . '.' . $this->options['collection'], $query);
                     $result = [];
                     foreach ($cursor as $doc) {
-                        var_dump($doc);
+                        $doc = (array)$doc;
+                        $_id = $doc['_id']->jsonSerialize();
+                        $doc['_id'] = $_id['$oid'];
                         $result[] = $doc;
                     }
-                    $filterStr = empty($this->filter) ? '{}' : json_encode($this->filter);
+                    $filterStr = $this->getFilterStr($filter);
+                    var_dump($filterStr);
                     $projectionStr = empty($this->options['projection']) ? '' : ',' . json_encode($this->options['projection']);
                     $sortStr = empty($this->options['sort']) ? '' : '.sort(' . json_encode($this->options['sort']) . ')';
                     $limitStr = empty($this->options['limit']) ? '' : '.limit(' . json_encode($this->options['limit']) . ')';
@@ -100,10 +128,7 @@ abstract class AbstractMDO extends AbstractDB
                     $commandStr = "db.{$this->options['collection']}.find(";
                     $commandStr .= $filterStr . $projectionStr;
                     $commandStr .= ')';
-                    $commandStr .= $sortStr;
-                    $commandStr .= $limitStr;
-                    $commandStr .= $skipStr;
-                    var_dump($commandStr);
+                    $commandStr .= $sortStr . $limitStr . $skipStr;
                     break;
                 case 'insert':
                     if (empty($this->data)) {

@@ -20,6 +20,14 @@ class Mongo extends AbstractMDO
     }
 
     /**
+     * @return mixed
+     */
+    public function now()
+    {
+        return parent::now();
+    }
+
+    /**
      * @param string $collection
      * @return Collection count
      * @throws Exception\DatabaseException

@@ -51,6 +51,11 @@ trait TraitWhere
         return $this->__where()->lessThanOrEqualTo($field, $value);
     }
 
+    public function regex($field, $value)
+    {
+        return $this->__where()->regex($field, $value);
+    }
+
     public function like($field, $value)
     {
         return $this->__where()->like($field, $value);

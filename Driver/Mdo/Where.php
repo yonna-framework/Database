@@ -3,10 +3,10 @@
 namespace Yonna\Database\Driver\Mdo;
 
 use Closure;
+use MongoDB\BSON\ObjectId;
+use MongoDB\BSON\Regex;
 use Yonna\Database\Driver\AbstractMDO;
-use Yonna\Database\Driver\Type;
 use Yonna\Throwable\Exception;
-use Yonna\Foundation\Moment;
 
 /**
  * Class Where
@@ -37,6 +37,7 @@ class Where extends AbstractMDO
     const greaterThanOrEqualTo = 'greaterThanOrEqualTo';    //大于等于
     const lessThan = 'lessThan';                            //小于
     const lessThanOrEqualTo = 'lessThanOrEqualTo';          //小于等于
+    const regex = 'regex';                                  //正则
     const like = 'like';                                    //包含
     const notLike = 'notLike';                              //不包含
     const isNull = 'isNull';                                //为空
@@ -56,6 +57,7 @@ class Where extends AbstractMDO
         self::greaterThanOrEqualTo => '$gte',
         self::lessThan => '$lt',
         self::lessThanOrEqualTo => '$lte',
+        self::regex => '$regex',
         self::like => '$regex',
         self::notLike => '$regex',
         self::isNull => '$regex',
@@ -96,81 +98,54 @@ class Where extends AbstractMDO
 
     /**
      * where分析
-     * @return string
+     * @return array
      * @throws null
      */
     protected function parseWhere()
     {
         if (!$this->closure) {
-            return '';
+            return [];
         }
-        return $this->closure ? ' WHERE ' . $this->builtSql($this->closure) : '';
+        return $this->builtFilter($this->closure);
     }
 
     /**
-     * @param $val
-     * @param $ft
-     * @return array|bool|false|int|string
-     * @throws Exception\DatabaseException
+     * value分析
+     * @access protected
+     * @param $field
+     * @param mixed $value
+     * @return string
      */
-    private function parseWhereByFieldType($val, $ft)
+    protected function parseValue($field, $value)
     {
-        if (!in_array($ft, ['json', 'jsonb']) && is_array($val)) {
-            foreach ($val as $k => $v) {
-                $val[$k] = $this->parseWhereByFieldType($v, $ft);
+        if ($field === "_id") {
+            $value = new ObjectId($value);
+        } elseif (is_array($value)) {
+            foreach ($value as $k => $v) {
+                $field[$k] = $this->parseValue($k, $v);
             }
-            return $val;
         }
-        switch ($ft) {
-            case 'tinyint':
-            case 'smallint':
-            case 'int':
-            case 'integer':
-            case 'bigint':
-                $val = intval($val);
-                break;
-            case 'boolean':
-                $val = boolval($val);
-                break;
-            case 'date':
-                $val = date('Y-m-d', strtotime($val));
-                break;
-            case 'timestamp without time zone':
-                $val = Moment::datetimeMicro('Y-m-d H:i:s', $val);
-                break;
-            case 'timestamp with time zone':
-                $val = Moment::datetimeMicro('Y-m-d H:i:s', $val) . substr(date('O', strtotime($val)), 0, 3);
-                break;
-            case 'smallmoney':
-            case 'money':
-            case 'numeric':
-            case 'decimal':
-            case 'float':
-            case 'real':
-                $val = round($val, 10);
-                break;
-            case 'char':
-            case 'varchar':
-            case 'text':
-            case 'nchar':
-            case 'nvarchar':
-            case 'ntext':
-                $val = trim($val);
-                if ($this->isCrypto()) {
-                    $val = $this->Crypto::encrypt($val);
-                }
-                break;
-            default:
-                if ($this->options['db_type'] === Type::PGSQL) {
-                    if (strpos($ft, 'numeric') !== false) {
-                        $val = round($val, 10);
-                    }
-                }
-                break;
-        }
-        return $val;
+        return $value;
     }
 
+    /**
+     * value分析
+     * @access protected
+     * @param $filter
+     * @return string
+     */
+    protected function getFilterStr($filter)
+    {
+        $str = json_encode($filter, JSON_UNESCAPED_UNICODE);
+        preg_match_all('/{"\$oid":"(.*)"}/', $str, $match);
+        if ($match[0]) {
+            foreach ($match[0] as $mk => $m) {
+                $str = str_replace($m, 'ObjectId("__YONNA_MONGO_OBJECT_FUNC__")', $str);
+                $str = str_replace('__YONNA_MONGO_OBJECT_FUNC__', $match[1][$mk], $str);
+            }
+        }
+        return $str;
+    }
 
     /**
      * @param string $operat see self
@@ -182,13 +157,72 @@ class Where extends AbstractMDO
     {
         if ($operat == self::isNull || $operat == self::isNotNull || $value !== null) {//排除空值
             if ($operat != self::like || $operat != self::notLike || ($value != '%' && $value != '%%')) {//排除空like
-                if (!isset($this->filter[$field])) {
-                    $this->filter[$field] = [];
-                }
-                $this->filter[$field][self::operatVector[$operat]] = $value;
+                $this->closure[] = [
+                    'type' => 'chip',
+                    'operat' => $operat,
+                    'field' => $field,
+                    'value' => $value,
+                ];
             }
         }
         return $this;
+    }
+
+    /**
+     * 构建where的Filter句
+     * @param $closure
+     * @param array $filter
+     * @param string $cond
+     * @return array
+     * @throws Exception\DatabaseException
+     */
+    private function builtFilter($closure, $filter = [], $cond = 'and')
+    {
+        foreach ($closure as $v) {
+            switch ($v['type']) {
+                case 'closure':
+                    $filter = $this->builtFilter($v['value']->getClosure(), $filter, $v['cond']);
+                    break;
+                case 'array':
+                    foreach ($v['value'] as $ka => $va) {
+                        $va = $this->parseValue($ka, $va);
+                        $filter[$ka] = $va;
+                    }
+                    break;
+                case 'chip':
+                default:
+                    if (!isset($filter[$v['field']])) {
+                        $filter[$v['field']] = [];
+                    }
+                    $value = $this->parseValue($v['field'], $v['value']);
+                    switch ($v['operat']) {
+                        case self::like:
+                        case self::notLike:
+                            $t = substr($value, 0, 1) === '%';
+                            $e = substr($value, -1) === '%';
+                            if ($t && $e) {
+                                $value = substr($value, 1, strlen($value) - 2);
+                            } elseif ($t) {
+                                $value = substr($value, 1);
+                                $value = "{$value}$";
+                            } elseif ($e) {
+                                $value = substr($value, 0, strlen($value) - 1);
+                                $value = "^{$value}";
+                            }
+                            $value = new Regex($value);
+                            break;
+                        default:
+                            break;
+                    }
+                    $filter[$v['field']][self::operatVector[$v['operat']]] = $value;
+                    break;
+            }
+        }
+        $f = [];
+        foreach ($filter as $kf => $vf) {
+            $f[] = [$kf => $vf];
+        }
+        return ["\${$cond}" => $f];
     }
 
     /**
@@ -259,6 +293,16 @@ class Where extends AbstractMDO
     public function like($field, $value)
     {
         return $this->where(self::like, $field, $value);
+    }
+
+    /**
+     * @param $field
+     * @param $value
+     * @return self
+     */
+    public function regex($field, $value)
+    {
+        return $this->where(self::regex, $field, new Regex($value));
     }
 
     /**
@@ -344,7 +388,6 @@ class Where extends AbstractMDO
     public function clearWhere()
     {
         $this->closure = [];
-        $this->search_table = '';
         return $this;
     }
 
@@ -358,13 +401,13 @@ class Where extends AbstractMDO
     }
 
     /**
-     * 字符串搜索where
-     * @param string $where
+     * 数组搜索where
+     * @param array $where
      * @return $this
      */
-    public function search(string $where)
+    public function search(array $where)
     {
-        $this->closure[] = array('type' => 'string', 'value' => $where);
+        $this->closure[] = array('type' => 'array', 'value' => $where);
         return $this;
     }
 

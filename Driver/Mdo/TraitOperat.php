@@ -38,6 +38,16 @@ trait TraitOperat
         return $result && is_array($result) ? reset($result) : $result;
     }
 
+    /**
+     * 统计
+     * @param $field
+     * @return int
+     */
+    public function count()
+    {
+        return $this->query('count');
+    }
+
 
     /**
      * insert

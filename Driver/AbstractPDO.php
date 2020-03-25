@@ -117,31 +117,6 @@ abstract class AbstractPDO extends AbstractDB
     }
 
     /**
-     * 当前时间（只能用于insert 和 update）
-     * @return mixed
-     */
-    protected function now()
-    {
-        $now = null;
-        switch ($this->options['db_type']) {
-            case Type::MYSQL:
-            case Type::PGSQL:
-                $now = ['exp', 'now()'];
-                break;
-            case Type::MSSQL:
-                $now = ['exp', "GETDATE()"];
-                break;
-            case Type::SQLITE:
-                $now = ['exp', "select datetime(CURRENT_TIMESTAMP,'localtime')"];
-                break;
-            default:
-                $now = date('Y-m-d H:i:s', time());
-                break;
-        }
-        return $now;
-    }
-
-    /**
      * 返回 lastInsertId
      *
      * @return string
