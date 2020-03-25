@@ -66,11 +66,11 @@ abstract class AbstractMDO extends AbstractDB
     /**
      * where分析
      * 这个where需要被继承的where覆盖才会有效
-     * @return object
+     * @return array
      */
     protected function parseWhere()
     {
-        return (object)[];
+        return [];
     }
 
     /**
@@ -126,13 +126,6 @@ abstract class AbstractMDO extends AbstractDB
                     $commandStr .= ').count()';
                     break;
                 case 'select':
-                    /*
-                    $filter = ['x' => ['$gt' => 1]];
-                    $options = [
-                        'projection' => ['_id' => 0],
-                        'sort' => ['x' => -1],
-                    ];
-                    */
                     $filter = $this->parseWhere();
                     $query = new Query($filter, $this->options);
                     $cursor = $this->mdo()->getManager()->executeQuery($this->name . '.' . $this->options['collection'], $query);
@@ -176,7 +169,6 @@ abstract class AbstractMDO extends AbstractDB
                     }
                     $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->options['collection'], $bulk, $mdoOps);
                     $result = [
-                        'ids' => $result->getUpsertedIds(),
                         'insert_count' => $result->getInsertedCount(),
                         'bulk_count' => $bulk->count(),
                     ];
@@ -188,18 +180,31 @@ abstract class AbstractMDO extends AbstractDB
                     }
                     $filter = $this->parseWhere();
                     $bulk = new BulkWrite();
-                    $bulk->update($filter, $this->data, [
+                    $bulk->update($filter, ['$set' => $this->data], [
                         'multi' => true
                     ]);
                     $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->options['collection'], $bulk, $mdoOps);
                     $result = [
-                        'ids' => $result->getUpsertedIds(),
-                        'insert_count' => $result->getInsertedCount(),
+                        'update_count' => $result->getUpsertedCount(),
                         'bulk_count' => $bulk->count(),
                     ];
                     $commandStr = "db.{$this->options['collection']}.update("
                         . $this->getFilterStr($filter) . ',{$set:'
                         . json_encode($this->data, JSON_UNESCAPED_UNICODE) . ',{multi:true})';
+                    break;
+                case 'delete':
+                    $filter = $this->parseWhere();
+                    $bulk = new BulkWrite();
+                    $bulk->delete($filter, [
+                        'limit' => false
+                    ]);
+                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->options['collection'], $bulk, $mdoOps);
+                    $result = [
+                        'delete_count' => $result->getDeletedCount(),
+                        'bulk_count' => $bulk->count(),
+                    ];
+                    $commandStr = "db.{$this->options['collection']}.delete("
+                        . $this->getFilterStr($filter) . ',{limit:false})';
                     break;
             }
         } catch (BulkWriteException $e) {

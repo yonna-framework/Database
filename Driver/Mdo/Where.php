@@ -217,6 +217,9 @@ class Where extends AbstractMDO
                         default:
                             break;
                     }
+                    if (strpos('not', strtolower($v['operat'])) !== false) {
+                        $value = ['$not' => new Regex($value)];
+                    }
                     $filter[$v['field']][self::operatVector[$v['operat']]] = $value;
                     break;
             }
@@ -437,6 +440,19 @@ class Where extends AbstractMDO
         $nw = new self($this->options);
         $cells($nw);
         $this->closure[] = ['type' => 'closure', 'cond' => 'or', 'value' => $nw];
+        return $this;
+    }
+
+    /**
+     * 条件nor闭包
+     * @param Closure $cells
+     * @return $this
+     */
+    public function nor(Closure $cells)
+    {
+        $nw = new self($this->options);
+        $cells($nw);
+        $this->closure[] = ['type' => 'closure', 'cond' => 'nor', 'value' => $nw];
         return $this;
     }
 

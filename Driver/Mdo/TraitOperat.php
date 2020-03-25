@@ -63,22 +63,6 @@ trait TraitOperat
     }
 
     /**
-     * insert
-     * @param $data
-     * @return mixed
-     * @throws Exception\DatabaseException
-     */
-    public function update($data)
-    {
-        $where = $this->parseWhere();
-        if (!$where) {
-            Exception::database('Mongo update must be sure when without where');
-        }
-        $this->data = $data;
-        return $this->query('update');
-    }
-
-    /**
      * insert all
      * @param $data
      * @return mixed
@@ -87,6 +71,38 @@ trait TraitOperat
     {
         $this->data = $data;
         return $this->query('insertAll');
+    }
+
+    /**
+     * update
+     * @param $data
+     * @param bool $sure
+     * @return mixed
+     * @throws Exception\DatabaseException
+     */
+    public function update($data, $sure = false)
+    {
+        $where = $this->parseWhere();
+        if (!$where && !$sure) {
+            Exception::database('Mongo update must be sure when without where');
+        }
+        $this->data = $data;
+        return $this->query('update');
+    }
+
+    /**
+     * delete
+     * @param bool $sure
+     * @return mixed
+     * @throws Exception\DatabaseException
+     */
+    public function delete($sure = false)
+    {
+        $where = $this->parseWhere();
+        if (!$where && !$sure) {
+            Exception::database('Mongo delete must be sure when without where');
+        }
+        return $this->query('delete');
     }
 
 }

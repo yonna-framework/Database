@@ -25,6 +25,28 @@ class Collection extends AbstractMDO
     }
 
     /**
+     * 限定字段
+     * @param $field
+     * @param bool $except 排除模式
+     * @return $this
+     */
+    public function field($field, $except = false): self
+    {
+        if (is_string($field)) {
+            $field = explode(',', $field);
+        }
+        $this->options['projection'] = [];
+        if (is_array($field)) {
+            $field = array_filter($field);
+            foreach ($field as $f) {
+                $f = trim($f);
+                $this->options['projection'][] = [$f => $except ? 0 : 1];
+            }
+        }
+        return $this;
+    }
+
+    /**
      * @return Collection
      */
     public function groupBy(): self
