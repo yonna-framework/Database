@@ -7,6 +7,7 @@
 namespace Yonna\Database\Driver\Mdo;
 
 use Yonna\Database\Driver\AbstractMDO;
+use Yonna\Throwable\Exception\DatabaseException;
 
 class Collection extends AbstractMDO
 {
@@ -79,6 +80,20 @@ class Collection extends AbstractMDO
     public function offset(int $skip): self
     {
         $this->options['skip'] = $skip;
+        return $this;
+    }
+
+    /**
+     * 删除合集
+     * @param bool $sure 确认执行，防止误操作
+     * @return self
+     * @throws DatabaseException
+     */
+    public function drop($sure = false)
+    {
+        if ($this->getCollection() && $sure === true) {
+            return $this->query('drop');
+        }
         return $this;
     }
 

@@ -2,6 +2,8 @@
 
 namespace Yonna\Database\Driver\Mdo;
 
+use Yonna\Throwable\Exception;
+
 /**
  * Trait TraitOperat
  * @package Yonna\Database\Driver\Mdo
@@ -58,6 +60,22 @@ trait TraitOperat
     {
         $this->data = $data;
         return $this->query('insert');
+    }
+
+    /**
+     * insert
+     * @param $data
+     * @return mixed
+     * @throws Exception\DatabaseException
+     */
+    public function update($data)
+    {
+        $where = $this->parseWhere();
+        if (!$where) {
+            Exception::database('Mongo update must be sure when without where');
+        }
+        $this->data = $data;
+        return $this->query('update');
     }
 
     /**

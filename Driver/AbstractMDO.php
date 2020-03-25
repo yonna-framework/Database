@@ -74,6 +74,17 @@ abstract class AbstractMDO extends AbstractDB
     }
 
     /**
+     * value分析
+     * @access protected
+     * @param $filter
+     * @return string
+     */
+    protected function getFilterStr($filter)
+    {
+        return '{}';
+    }
+
+    /**
      * 设置执行命令
      * @param $command
      * @return mixed
@@ -92,7 +103,17 @@ abstract class AbstractMDO extends AbstractDB
 
         try {
             switch ($command) {
+                case 'drop':
+                    $command = new Command([
+                        'drop' => $this->options['collection'],
+                    ]);
+                    $res = $this->mdo()->getManager()->executeCommand($this->name, $command);
+                    $res = current($res->toArray());
+                    $result = $res->ok === 1;
+                    $commandStr = "db.{$this->options['collection']}.drop()";
+                    break;
                 case 'count':
+                    $filter = $this->parseWhere();
                     $command = new Command([
                         'count' => $this->options['collection'],
                         'query' => $this->parseWhere(),
@@ -100,6 +121,9 @@ abstract class AbstractMDO extends AbstractDB
                     $res = $this->mdo()->getManager()->executeCommand($this->name, $command);
                     $res = current($res->toArray());
                     $result = $res->n;
+                    $commandStr = "db.{$this->options['collection']}.find(";
+                    $commandStr .= $this->getFilterStr($filter);
+                    $commandStr .= ').count()';
                     break;
                 case 'select':
                     /*
@@ -119,14 +143,12 @@ abstract class AbstractMDO extends AbstractDB
                         $doc['_id'] = $_id['$oid'];
                         $result[] = $doc;
                     }
-                    $filterStr = $this->getFilterStr($filter);
-                    var_dump($filterStr);
                     $projectionStr = empty($this->options['projection']) ? '' : ',' . json_encode($this->options['projection']);
                     $sortStr = empty($this->options['sort']) ? '' : '.sort(' . json_encode($this->options['sort']) . ')';
                     $limitStr = empty($this->options['limit']) ? '' : '.limit(' . json_encode($this->options['limit']) . ')';
                     $skipStr = empty($this->options['skip']) ? '' : '.skip(' . json_encode($this->options['skip']) . ')';
                     $commandStr = "db.{$this->options['collection']}.find(";
-                    $commandStr .= $filterStr . $projectionStr;
+                    $commandStr .= $this->getFilterStr($filter) . $projectionStr;
                     $commandStr .= ')';
                     $commandStr .= $sortStr . $limitStr . $skipStr;
                     break;
@@ -159,6 +181,25 @@ abstract class AbstractMDO extends AbstractDB
                         'bulk_count' => $bulk->count(),
                     ];
                     $commandStr = "db.{$this->options['collection']}.insertMany(" . json_encode($this->data, JSON_UNESCAPED_UNICODE) . ')';
+                    break;
+                case 'update':
+                    if (empty($this->data)) {
+                        return false;
+                    }
+                    $filter = $this->parseWhere();
+                    $bulk = new BulkWrite();
+                    $bulk->update($filter, $this->data, [
+                        'multi' => true
+                    ]);
+                    $result = $this->mdo()->getManager()->executeBulkWrite($this->name . '.' . $this->options['collection'], $bulk, $mdoOps);
+                    $result = [
+                        'ids' => $result->getUpsertedIds(),
+                        'insert_count' => $result->getInsertedCount(),
+                        'bulk_count' => $bulk->count(),
+                    ];
+                    $commandStr = "db.{$this->options['collection']}.update("
+                        . $this->getFilterStr($filter) . ',{$set:'
+                        . json_encode($this->data, JSON_UNESCAPED_UNICODE) . ',{multi:true})';
                     break;
             }
         } catch (BulkWriteException $e) {

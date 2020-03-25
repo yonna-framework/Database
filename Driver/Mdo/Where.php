@@ -136,6 +136,9 @@ class Where extends AbstractMDO
      */
     protected function getFilterStr($filter)
     {
+        if (!$filter) {
+            return '{}';
+        }
         $str = json_encode($filter, JSON_UNESCAPED_UNICODE);
         preg_match_all('/{"\$oid":"(.*)"}/', $str, $match);
         if ($match[0]) {
