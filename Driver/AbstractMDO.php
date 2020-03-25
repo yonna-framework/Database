@@ -85,6 +85,29 @@ abstract class AbstractMDO extends AbstractDB
     }
 
     /**
+     * @param $cursor
+     * @return array
+     */
+    private function resultFormat($cursor)
+    {
+        $result = [];
+        foreach ($cursor as $doc) {
+            $temp = [];
+            $doc = (array)$doc;
+            foreach ($doc as $field => $d) {
+                if ($field === "_id") {
+                    $_id = $d->jsonSerialize();
+                    $temp['_id'] = $_id['$oid'];
+                } else {
+                    $temp[$this->getCollection() . '_' . $field] = $d;
+                }
+            }
+            $result[] = $temp;
+        }
+        return $result;
+    }
+
+    /**
      * 设置执行命令
      * @param $command
      * @return mixed
@@ -129,13 +152,7 @@ abstract class AbstractMDO extends AbstractDB
                     $filter = $this->parseWhere();
                     $query = new Query($filter, $this->options);
                     $cursor = $this->mdo()->getManager()->executeQuery($this->name . '.' . $this->options['collection'], $query);
-                    $result = [];
-                    foreach ($cursor as $doc) {
-                        $doc = (array)$doc;
-                        $_id = $doc['_id']->jsonSerialize();
-                        $doc['_id'] = $_id['$oid'];
-                        $result[] = $doc;
-                    }
+                    $result = $this->resultFormat($cursor);
                     $projectionStr = empty($this->options['projection']) ? '' : ',' . json_encode($this->options['projection']);
                     $sortStr = empty($this->options['sort']) ? '' : '.sort(' . json_encode($this->options['sort']) . ')';
                     $limitStr = empty($this->options['limit']) ? '' : '.limit(' . json_encode($this->options['limit']) . ')';
