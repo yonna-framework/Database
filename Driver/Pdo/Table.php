@@ -174,29 +174,29 @@ class Table extends AbstractPDO
             return $this;
         }
         if (!isset($this->options['order'])) {
-            $this->options['order'] = array();
+            $this->options['order'] = [];
         }
         if ($table) {
             $table = $this->parseTable($table);
         }
+
         if (is_string($orderBy)) {
-            $sort = strtolower($sort);
-            if ($table) {
-                $this->options['order'][$table . '.' . $orderBy] = $sort;
-            } else {
-                $this->options['order'][$orderBy] = $sort;
-            }
-        } elseif (is_array($orderBy)) {
+            $orderBy = explode(',', $orderBy);
+        }
+        if (is_array($orderBy)) {
             $orderBy = array_filter($orderBy);
-            foreach ($orderBy as $v) {
-                $orderInfo = explode(' ', $v);
-                $orderInfo[1] = strtolower($orderInfo[1]);
-                if ($table) {
-                    $this->options['order'][$table . '.' . $orderInfo[0]] = $orderInfo[1];
+            foreach ($orderBy as $o) {
+                $o = explode(' ', $o);
+                if (count($o) > 1) {
+                    $s = strtolower($o[1]);
                 } else {
-                    $this->options['order'][$orderInfo[0]] = $orderInfo[1];
+                    $s = $sort;
                 }
-                unset($orderInfo);
+                if ($table) {
+                    $this->options['order'][$table . '.' . $o[0]] = $s;
+                } else {
+                    $this->options['order'][$o[0]] = $s;
+                }
             }
         }
         return $this;

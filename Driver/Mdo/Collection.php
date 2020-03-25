@@ -49,7 +49,7 @@ class Collection extends AbstractMDO
     /**
      * @return Collection
      */
-    public function groupBy(): self
+    public function groupBy($groupBy): self
     {
         return $this;
     }
@@ -65,32 +65,20 @@ class Collection extends AbstractMDO
             return $this;
         }
         if (is_string($orderBy)) {
-            $sort = strtolower($sort);
-            $this->options['sort'][$orderBy] = $sort === self::ASC ? 1 : -1;
-        } elseif (is_array($orderBy)) {
-            $orderBy = array_filter($orderBy);
-            foreach ($orderBy as $v) {
-                $orderInfo = explode(' ', $v);
-                $orderInfo[1] = strtolower($orderInfo[1]);
-                $this->options['sort'][$orderInfo[0]] = $orderInfo[1] === self::ASC ? 1 : -1;
-                unset($orderInfo);
-            }
+            $orderBy = explode(',', $orderBy);
         }
-        return $this;
-    }
-
-    /**
-     * order by string 支持 field asc,field desc 形式
-     * @param $orderBy
-     * @return self
-     */
-    public function orderByStr($orderBy): self
-    {
-        $orderBy = explode(',', $orderBy);
-        foreach ($orderBy as $o) {
-            $o = explode(' ', $o);
-            $o[1] = strtolower($o[1]);
-            $this->options['sort'][$o[0]] = $o[1] === self::ASC ? 1 : -1;
+        if (is_array($orderBy)) {
+            $orderBy = array_filter($orderBy);
+            foreach ($orderBy as $o) {
+                $o = explode(' ', $o);
+                if (count($o) > 1) {
+                    $o[1] = strtolower($o[1]);
+                    $orderBy[$o[0]] = $o[1];
+                    $this->options['sort'][$o[0]] = $o[1] === self::ASC ? 1 : -1;
+                } else {
+                    $this->options['sort'][$o[0]] = $sort === self::ASC ? 1 : -1;
+                }
+            }
         }
         return $this;
     }
