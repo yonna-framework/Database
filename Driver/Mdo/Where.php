@@ -42,8 +42,6 @@ class Where extends AbstractMDO
     const notLike = 'notLike';                              //不包含
     const isNull = 'isNull';                                //为空
     const isNotNull = 'isNotNull';                          //不为空
-    const between = 'between';                              //在值之内
-    const notBetween = 'notBetween';                        //在值之外
     const in = 'in';                                        //在或集
     const notIn = 'notIn';                                  //不在或集
 
@@ -60,10 +58,8 @@ class Where extends AbstractMDO
         self::regex => '$regex',
         self::like => '$regex',
         self::notLike => '$regex',
-        self::isNull => '$regex',
-        self::isNotNull => '$regex',
-        self::between => '$regex',
-        self::notBetween => '$regex',
+        self::isNull => null,
+        self::isNotNull => '$ne',
         self::in => '$in',
         self::notIn => '$nin',
     ];
@@ -199,6 +195,9 @@ class Where extends AbstractMDO
                     }
                     $value = $this->parseValue($v['field'], $v['value']);
                     switch ($v['operat']) {
+                        case self::regex:
+                            $value = new Regex($value);
+                            break;
                         case self::like:
                         case self::notLike:
                             $t = substr($value, 0, 1) === '%';
@@ -214,13 +213,21 @@ class Where extends AbstractMDO
                             }
                             $value = new Regex($value);
                             break;
+                        case self::isNull:
+                        case self::isNotNull:
+                            $value = null;
+                            break;
                         default:
                             break;
                     }
                     if (strpos('not', strtolower($v['operat'])) !== false) {
-                        $value = ['$not' => new Regex($value)];
+                        $value = ['$not' => $value];
                     }
-                    $filter[$v['field']][self::operatVector[$v['operat']]] = $value;
+                    if ($v['operat'] === self::isNull) {
+                        $filter[$v['field']] = $value;
+                    } else {
+                        $filter[$v['field']][self::operatVector[$v['operat']]] = $value;
+                    }
                     break;
             }
         }
@@ -296,9 +303,9 @@ class Where extends AbstractMDO
      * @param $value
      * @return self
      */
-    public function like($field, $value)
+    public function regex($field, $value)
     {
-        return $this->where(self::like, $field, $value);
+        return $this->where(self::regex, $field, $value);
     }
 
     /**
@@ -306,9 +313,9 @@ class Where extends AbstractMDO
      * @param $value
      * @return self
      */
-    public function regex($field, $value)
+    public function like($field, $value)
     {
-        return $this->where(self::regex, $field, new Regex($value));
+        return $this->where(self::like, $field, $value);
     }
 
     /**
@@ -344,14 +351,13 @@ class Where extends AbstractMDO
      * @param $value
      * @return self
      */
-    public function between($field, $value)
+    public function between($field, array $value)
     {
         if (is_string($value)) $value = explode(',', $value);
-        if (!is_array($value)) $value = (array)$value;
         if (count($value) !== 2) return $this;
-        if (!$value[0]) return $this;
-        if (!$value[1]) return $this;
-        return $this->where(self::between, $field, $value);
+        return $this
+            ->where(self::greaterThanOrEqualTo, $field, $value[0])
+            ->where(self::lessThanOrEqualTo, $field, $value[1]);
     }
 
     /**
@@ -359,12 +365,13 @@ class Where extends AbstractMDO
      * @param $value
      * @return self
      */
-    public function notBetween($field, $value)
+    public function notBetween($field, array $value)
     {
         if (is_string($value)) $value = explode(',', $value);
-        if (!is_array($value)) $value = (array)$value;
         if (count($value) !== 2) return $this;
-        return $this->where(self::notBetween, $field, $value);
+        return $this
+            ->where(self::lessThanOrEqualTo, $field, $value[0])
+            ->where(self::greaterThanOrEqualTo, $field, $value[1]);
     }
 
     /**
@@ -372,7 +379,7 @@ class Where extends AbstractMDO
      * @param $value
      * @return self
      */
-    public function in($field, $value)
+    public function in($field, array $value)
     {
         return $this->where(self::in, $field, $value);
     }
@@ -382,7 +389,7 @@ class Where extends AbstractMDO
      * @param $value
      * @return self
      */
-    public function notIn($field, $value)
+    public function notIn($field, array $value)
     {
         return $this->where(self::notIn, $field, $value);
     }
