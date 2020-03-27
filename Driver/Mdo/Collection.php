@@ -47,10 +47,12 @@ class Collection extends AbstractMDO
     }
 
     /**
+     * @param $group
      * @return Collection
      */
-    public function groupBy($groupBy): self
+    public function groupBy($group): self
     {
+        $this->options['aggregate'] = $group;
         return $this;
     }
 
