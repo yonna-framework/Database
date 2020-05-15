@@ -69,10 +69,10 @@ trait TraitOperat
      * @param int $per
      * @return mixed
      */
-    public function page($current = 0, $per = 10)
+    public function page($current = 1, $per = 10)
     {
         $limit = (int)$per;
-        $offset = (int)($current) * $limit;
+        $offset = (int)($current - 1) * $limit;
         $this->limit($offset, $limit);
 
         $sql = $this->buildSelectSql();

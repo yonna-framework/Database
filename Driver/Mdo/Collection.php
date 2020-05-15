@@ -86,16 +86,6 @@ class Collection extends AbstractMDO
     }
 
     /**
-     * @param int $skip
-     * @return Collection
-     */
-    public function offset(int $skip): self
-    {
-        $this->options['skip'] = $skip;
-        return $this;
-    }
-
-    /**
      * 删除合集
      * @param bool $sure 确认执行，防止误操作
      * @return self

@@ -351,13 +351,13 @@ class Where extends AbstractMDO
      * @param $value
      * @return self
      */
-    public function between($field, array $value)
+    public function between($field, $value)
     {
         if (is_string($value)) $value = explode(',', $value);
         if (count($value) !== 2) return $this;
         return $this
-            ->where(self::greaterThanOrEqualTo, $field, $value[0])
-            ->where(self::lessThanOrEqualTo, $field, $value[1]);
+            ->where(self::greaterThanOrEqualTo, $field, round($value[0], 6))
+            ->where(self::lessThanOrEqualTo, $field, round($value[1], 6));
     }
 
     /**

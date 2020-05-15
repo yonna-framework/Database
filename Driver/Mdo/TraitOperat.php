@@ -12,6 +12,16 @@ trait TraitOperat
 {
 
     /**
+     * @param int $skip
+     * @return Collection
+     */
+    public function offset(int $skip): self
+    {
+        $this->options['skip'] = $skip;
+        return $this;
+    }
+
+    /**
      * @param int $limit
      * @return Collection
      */
@@ -41,8 +51,32 @@ trait TraitOperat
     }
 
     /**
+     * 分页查找
+     * @param int $current
+     * @param int $per
+     * @return mixed
+     */
+    public function page($current = 1, $per = 10)
+    {
+        $count = $this->count();
+        $limit = (int)$per;
+        $offset = (int)($current - 1) * $limit;
+        $this->offset($offset);
+        $this->limit($limit);
+        $data = $this->multi();
+        $result = [];
+        $per = !$per ? 10 : $per;
+        $last = ceil($count / $per);
+        $result['list'] = $data;
+        $result['page']['total'] = $count;
+        $result['page']['per'] = $per;
+        $result['page']['current'] = (int)$current;
+        $result['page']['last'] = (int)$last;
+        return $result;
+    }
+
+    /**
      * 统计
-     * @param $field
      * @return int
      */
     public function count()

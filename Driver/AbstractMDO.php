@@ -139,7 +139,7 @@ abstract class AbstractMDO extends AbstractDB
                     $filter = $this->parseWhere();
                     $command = new Command([
                         'count' => $this->options['collection'],
-                        'query' => $this->parseWhere(),
+                        'query' => $filter ?: null,
                     ]);
                     $res = $this->mdo()->getManager()->executeCommand($this->name, $command);
                     $res = current($res->toArray());
